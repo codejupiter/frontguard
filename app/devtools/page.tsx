@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSecurity } from "@/lib/store/SecurityContext";
 import { ModeCard, SectionHeader, StatusBadge } from "@/components/ui/primitives";
 import InfoPanel from "@/components/ui/InfoPanel";
@@ -22,22 +22,31 @@ export default function DevToolsPage() {
   const [premiumUnlocked, setPremiumUnlocked] = useState(false);
   const [consoleOutput, setConsoleOutput] = useState<string[]>([]);
 
+  const addLine = useCallback((line: string) => {
+    setConsoleOutput((prev) => [line, ...prev].slice(0, 20));
+  }, []);
+
   // Simulate DevTools manipulation detection
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const globalWindow = window as unknown as Record<string, unknown>;
+
     if (mode === "attack") {
       // In attack mode, expose a global that can be manipulated
-      (window as unknown as Record<string, unknown>).__fg_limit = uiPurchaseLimit;
-      (window as unknown as Record<string, unknown>).__fg_unlock = (val: boolean) => {
+      globalWindow.__fg_limit = uiPurchaseLimit;
+      globalWindow.__fg_unlock = (val: boolean) => {
         setPremiumUnlocked(val);
         addLine(`> __fg_unlock(${val}) executed — premium: ${val}`);
         addLog({ type: "exploit", message: "Premium feature unlocked via DevTools JS", module: "devtools" });
       };
     }
-  }, [mode, uiPurchaseLimit]);
 
-  const addLine = (line: string) => {
-    setConsoleOutput((prev) => [line, ...prev].slice(0, 20));
-  };
+    return () => {
+      delete globalWindow.__fg_limit;
+      delete globalWindow.__fg_unlock;
+    };
+  }, [addLine, addLog, mode, uiPurchaseLimit]);
 
   const simulateBypass = () => {
     if (mode === "attack") {
@@ -248,7 +257,7 @@ export default function DevToolsPage() {
                   {showHidden ? "Hide value" : "Inspect hidden field"}
                 </button>
                 {showHidden && (
-                  <p className="text-red-400 mt-1">value="sk_live_xK9mP3abc123secretkey" ← Never put secrets in HTML!</p>
+                  <p className="text-red-400 mt-1">{'value="sk_live_xK9mP3abc123secretkey" ← Never put secrets in HTML!'}</p>
                 )}
               </div>
             </div>

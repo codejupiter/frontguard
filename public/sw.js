@@ -6,18 +6,11 @@
  * Place this in /public/sw.js — Next.js serves /public files at root.
  */
 
-const CACHE_NAME = "frontguard-v1";
+const CACHE_NAME = "frontguard-v2";
 const OFFLINE_URL = "/offline";
 
 // Assets to pre-cache on install
 const PRECACHE_URLS = [
-  "/",
-  "/landing",
-  "/xss",
-  "/auth",
-  "/api-security",
-  "/rbac",
-  "/devtools",
   "/manifest.json",
   "/icons/icon-192x192.png",
   "/icons/icon-512x512.png",
@@ -85,19 +78,9 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Pages: stale-while-revalidate
+  // Dynamic pages use per-request CSP nonces, so never serve cached HTML.
   event.respondWith(
-    caches.open(CACHE_NAME).then(async (cache) => {
-      const cached = await cache.match(request);
-      const fetchPromise = fetch(request)
-        .then((res) => {
-          if (res.ok) cache.put(request, res.clone());
-          return res;
-        })
-        .catch(() => cached ?? new Response("Offline", { status: 503 }));
-
-      return cached ?? fetchPromise;
-    })
+    fetch(request).catch(() => caches.match(OFFLINE_URL).then((cached) => cached ?? new Response("Offline", { status: 503 })))
   );
 });
 

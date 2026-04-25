@@ -24,7 +24,6 @@ export default function AuthPage() {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
   const [tokenVisible, setTokenVisible] = useState(false);
-  const [storedToken, setStoredToken] = useState<string | null>(null);
 
   const getTokenFromStorage = () => {
     if (typeof window === "undefined") return null;
@@ -50,10 +49,10 @@ export default function AuthPage() {
     const user = { id: match.username, username: match.username, role: match.role as "admin" | "user" | "guest", token };
 
     if (mode === "attack") {
+      if (typeof window === "undefined") return;
       // INSECURE: store in localStorage
       localStorage.setItem("fg_token", token);
       localStorage.setItem("fg_user", JSON.stringify({ username: match.username, role: match.role }));
-      setStoredToken(token);
       addLog({
         type: "exploit",
         message: "Token stored in localStorage — accessible via JS",
@@ -62,7 +61,6 @@ export default function AuthPage() {
       });
     } else {
       // SECURE: simulate httpOnly cookie (can't be read by JS)
-      setStoredToken("[httpOnly cookie — not readable by JavaScript]");
       addLog({
         type: "blocked",
         message: "Token stored in httpOnly cookie — JS cannot read it",
@@ -75,16 +73,16 @@ export default function AuthPage() {
   };
 
   const handleLogout = () => {
-    if (mode === "attack") {
+    if (mode === "attack" && typeof window !== "undefined") {
       localStorage.removeItem("fg_token");
       localStorage.removeItem("fg_user");
     }
-    setStoredToken(null);
     setCurrentUser(null);
     addLog({ type: "info", message: "User logged out", module: "auth" });
   };
 
   const handleDevToolsSnoop = () => {
+    if (typeof window === "undefined") return;
     const token = localStorage.getItem("fg_token");
     if (token) {
       const decoded = decodeMockToken(token);

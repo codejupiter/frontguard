@@ -110,22 +110,25 @@ const STEPS = [
 ];
 
 export default function OnboardingModal() {
-  const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
 
   // Mount guard — prevents SSR/localStorage mismatch that causes hydration errors
   useEffect(() => {
-    setMounted(true);
+    if (typeof window === "undefined") return;
+
     const done = localStorage.getItem(STORAGE_KEY);
     if (!done) {
       // Small delay so layout renders first
-      setTimeout(() => setOpen(true), 600);
+      const timer = setTimeout(() => setOpen(true), 600);
+      return () => clearTimeout(timer);
     }
   }, []);
 
   const close = () => {
-    localStorage.setItem(STORAGE_KEY, "1");
+    if (typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_KEY, "1");
+    }
     setOpen(false);
     setStep(0);
   };
@@ -137,8 +140,7 @@ export default function OnboardingModal() {
 
   const back = () => setStep((s) => Math.max(0, s - 1));
 
-  // Don't render anything until mounted — avoids hydration mismatch
-  if (!mounted || !open) return null;
+  if (!open) return null;
 
   const current = STEPS[step];
 

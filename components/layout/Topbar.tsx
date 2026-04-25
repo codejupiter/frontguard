@@ -33,7 +33,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
         </button>
 
         <div className="text-zinc-600 text-xs font-mono hidden lg:block">
-          <span className="text-zinc-700">// </span>Frontend Security Playground
+          <span className="text-zinc-700">{"// "}</span>Frontend Security Playground
         </div>
         <Link
           href="/landing"

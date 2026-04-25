@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import "./globals.css";
 import AppShell from "@/components/layout/AppShell";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "FrontGuard — Frontend Security Playground",
@@ -28,7 +31,9 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  await headers();
+
   return (
     <html lang="en">
       <head>

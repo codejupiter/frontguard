@@ -114,9 +114,9 @@ export default function RBACPage() {
               Role check in JavaScript only — trivially bypassable
             </div>
             <div className="bg-black/30 border border-red-500/20 rounded-lg p-3 text-[10px] font-mono text-zinc-500 space-y-1">
-              <p className="text-red-300">// In browser console:</p>
-              <p>window.__role = "admin"</p>
-              <p className="text-zinc-600">// Access granted instantly</p>
+              <p className="text-red-300">{"// In browser console:"}</p>
+              <p>{'window.__role = "admin"'}</p>
+              <p className="text-zinc-600">{"// Access granted instantly"}</p>
             </div>
             <div className="space-y-1.5">
               {ACTIONS.map((a) => {
@@ -142,9 +142,9 @@ export default function RBACPage() {
               Role decoded from signed JWT on the server
             </div>
             <div className="bg-black/30 border border-emerald-500/20 rounded-lg p-3 text-[10px] font-mono text-zinc-500 space-y-1">
-              <p className="text-emerald-300">// Server decodes your JWT:</p>
+              <p className="text-emerald-300">{"// Server decodes your JWT:"}</p>
               <p>const role = verify(token, SECRET)</p>
-              <p className="text-zinc-600">// Client cannot forge this</p>
+              <p className="text-zinc-600">{"// Client cannot forge this"}</p>
             </div>
             <div className="space-y-1.5">
               {ACTIONS.map((a) => {

@@ -68,35 +68,62 @@ function generateNonce(): string {
 // Production is fully strict — eval() is never used in built output.
 const IS_DEV = process.env.NODE_ENV !== "production";
 
-function buildCSP(nonce: string): string {
+function buildCSP(nonce: string, shouldUpgradeInsecureRequests: boolean): string {
   const scriptSrc = IS_DEV
     ? `'self' 'nonce-${nonce}' 'unsafe-eval'`   // dev: allow eval for Turbopack HMR
     : `'self' 'nonce-${nonce}'`;                  // prod: strict, no eval
 
-  const directives: Record<string, string> = {
-    "default-src":     "'self'",
-    "script-src":      scriptSrc,
-    "style-src":       "'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src":        "'self' https://fonts.gstatic.com",
-    "img-src":         "'self' data: blob:",
-    "connect-src":     IS_DEV ? "'self' ws: wss:" : "'self'", // dev: allow WS for HMR
-    "frame-ancestors": "'none'",
-    "base-uri":        "'self'",
-    "form-action":     "'self'",
-    "object-src":      "'none'",
-    "upgrade-insecure-requests": "",
-  };
+  const directives: Array<[string, string]> = [
+    ["default-src",     "'self'"],
+    ["script-src",      scriptSrc],
+    ["style-src",       "'self' 'unsafe-inline' https://fonts.googleapis.com"],
+    ["font-src",        "'self' https://fonts.gstatic.com"],
+    ["img-src",         "'self' data: blob:"],
+    ["connect-src",     IS_DEV ? "'self' ws: wss:" : "'self'"], // dev: allow WS for HMR
+    ["frame-ancestors", "'none'"],
+    ["base-uri",        "'self'"],
+    ["form-action",     "'self'"],
+    ["object-src",      "'none'"],
+  ];
 
-  return Object.entries(directives)
+  if (shouldUpgradeInsecureRequests) {
+    directives.push(["upgrade-insecure-requests", ""]);
+  }
+
+  return directives
     .map(([k, v]) => (v ? `${k} ${v}` : k))
     .join("; ");
+}
+
+function isHttpsRequest(request: NextRequest): boolean {
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+  return forwardedProto === "https" || request.nextUrl.protocol === "https:";
+}
+
+function securityHeaders(isHttps: boolean) {
+  const headers: Record<string, string> = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "X-XSS-Protection": "1; mode=block",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Cross-Origin-Resource-Policy": "same-origin",
+  };
+
+  if (isHttps) {
+    headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload";
+  }
+
+  return headers;
 }
 
 // ─── Proxy (Next.js 16 middleware convention) ─────────────────────────────────
 export function proxy(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
     ?? request.headers.get("x-real-ip")
-    ?? "127.0.0.1";
+    ?? process.env.NEXT_PUBLIC_APP_HOST
+    ?? "unknown";
 
   const ua = request.headers.get("user-agent");
   const path = request.nextUrl.pathname;
@@ -164,27 +191,27 @@ export function proxy(request: NextRequest) {
 
   // 5. Generate CSP nonce and build response with security headers
   const nonce = generateNonce();
+  const isHttps = isHttpsRequest(request);
+  const csp = buildCSP(nonce, isHttps);
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("x-request-id", requestId);
+  requestHeaders.set("x-real-ip", ip);
+  requestHeaders.set("Content-Security-Policy", csp);
+
   const response = NextResponse.next({
     request: {
-      headers: new Headers({
-        ...Object.fromEntries(request.headers.entries()),
-        "x-nonce": nonce,
-        "x-request-id": requestId,
-        "x-real-ip": ip,
-      }),
+      headers: requestHeaders,
     },
   });
 
   // 6. Attach all security headers
-  const csp = buildCSP(nonce);
   response.headers.set("Content-Security-Policy", csp);
-  response.headers.set("X-Content-Type-Options", "nosniff");
-  response.headers.set("X-Frame-Options", "DENY");
-  response.headers.set("X-XSS-Protection", "1; mode=block");
-  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()");
-  response.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
+  Object.entries(securityHeaders(isHttps)).forEach(([key, value]) => {
+    response.headers.set(key, value);
+  });
   response.headers.set("X-Request-Id", requestId);
+  response.headers.set("X-Real-IP", ip);
   response.headers.set("X-RateLimit-Remaining", String(globalLimit.remaining));
 
   // 7. Remove server fingerprinting headers

@@ -53,7 +53,7 @@ export default function XSSPage() {
   const handleReset = () => {
     setInput("");
     setSafeOutput("");
-    if (unsafeRef.current) unsafeRef.current.innerHTML = "";
+    if (typeof window !== "undefined" && unsafeRef.current) unsafeRef.current.innerHTML = "";
     setRenderCount(0);
   };
 

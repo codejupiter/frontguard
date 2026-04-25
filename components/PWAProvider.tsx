@@ -6,14 +6,16 @@ export default function PWAProvider() {
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
 
-    window.addEventListener("load", () => {
+    let updateTimer: ReturnType<typeof setInterval> | undefined;
+
+    const registerServiceWorker = () => {
       navigator.serviceWorker
         .register("/sw.js", { scope: "/" })
         .then((reg) => {
           console.log("SW registered:", reg.scope);
 
           // Check for updates every 60 seconds
-          setInterval(() => reg.update(), 60_000);
+          updateTimer = setInterval(() => reg.update(), 60_000);
 
           reg.addEventListener("updatefound", () => {
             const newWorker = reg.installing;
@@ -28,7 +30,14 @@ export default function PWAProvider() {
           });
         })
         .catch((err) => console.warn("SW registration failed:", err));
-    });
+    };
+
+    window.addEventListener("load", registerServiceWorker);
+
+    return () => {
+      window.removeEventListener("load", registerServiceWorker);
+      if (updateTimer) clearInterval(updateTimer);
+    };
   }, []);
 
   return null; // Renders nothing — just registers the SW
