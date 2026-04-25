@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="80" fill="#080810"/>
+  <path d="M256 80 L380 130 L380 250 C380 330 320 390 256 420 C192 390 132 330 132 250 L132 130 Z"
+        fill="none" stroke="#10b981" stroke-width="20" stroke-linejoin="round"/>
+  <text x="256" y="300" text-anchor="middle" font-family="monospace" font-size="140"
+        font-weight="bold" fill="#10b981">F</text>
+</svg>

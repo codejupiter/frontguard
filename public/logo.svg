@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" fill="none">
+  <defs>
+    <linearGradient id="shieldGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="glowGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Shield icon -->
+  <g transform="translate(8, 8)">
+    <!-- Glow backing -->
+    <path d="M32 4 L56 13 L56 36 C56 52 44 62 32 68 C20 62 8 52 8 36 L8 13 Z"
+          fill="url(#glowGrad)" opacity="0.6"/>
+    <!-- Shield body -->
+    <path d="M32 6 L54 15 L54 36 C54 50 43 60 32 66 C21 60 10 50 10 36 L10 15 Z"
+          fill="#080810" stroke="url(#shieldGrad)" stroke-width="1.5"/>
+    <!-- Inner shield highlight -->
+    <path d="M32 10 L50 18 L50 36 C50 47 41 55 32 60 C23 55 14 47 14 36 L14 18 Z"
+          fill="#10b981" fill-opacity="0.06"/>
+    <!-- F letterform -->
+    <text x="32" y="46"
+          text-anchor="middle"
+          font-family="'Courier New', monospace"
+          font-weight="700"
+          font-size="26"
+          fill="url(#shieldGrad)"
+          filter="url(#glow)">F</text>
+    <!-- Top scan line decoration -->
+    <line x1="20" y1="22" x2="44" y2="22" stroke="#10b981" stroke-width="0.75" stroke-opacity="0.4"/>
+  </g>
+
+  <!-- Wordmark -->
+  <g transform="translate(82, 0)">
+    <!-- "Front" -->
+    <text x="0" y="46"
+          font-family="'Courier New', Courier, monospace"
+          font-weight="700"
+          font-size="28"
+          letter-spacing="-0.5"
+          fill="#ffffff">Front</text>
+    <!-- "Guard" in emerald -->
+    <text x="88" y="46"
+          font-family="'Courier New', Courier, monospace"
+          font-weight="700"
+          font-size="28"
+          letter-spacing="-0.5"
+          fill="#10b981">Guard</text>
+    <!-- Tagline -->
+    <text x="1" y="62"
+          font-family="'Courier New', Courier, monospace"
+          font-size="9"
+          letter-spacing="2.5"
+          fill="#3f3f5a">SECURITY PLAYGROUND</text>
+  </g>
+</svg>
