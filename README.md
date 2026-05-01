@@ -4,7 +4,7 @@
 
 > **🛡️ Companion project:** [**frontguard-agent**](https://github.com/codejupiter/frontguard-agent) ([live demo](https://frontguard-agent.vercel.app/)) — the runtime detection counterpart to this educational playground. Where the playground teaches you *what* the vulnerabilities are, the agent is what you ship to *detect them* in production.
 
-**Live Demo:** [frontguard-nine.vercel.app](https://frontguard-nine.vercel.app)
+**Live Demo:** [[https://frontguard-3dp39xg1r-codejupiters-projects.vercel.app/](https://frontguard-3dp39xg1r-codejupiters-projects.vercel.app/)]
 **Landing Page:** `/landing` · **App:** `/`
 
 ---
