@@ -2,7 +2,9 @@
 
 > An interactive web application demonstrating common frontend security vulnerabilities and their secure implementations. Built as a production-quality portfolio project.
 
-**Live Demo:** `https://frontguard-yourname.vercel.app` ← replace after deploying  
+> **🛡️ Companion project:** [**frontguard-agent**](https://github.com/codejupiter/frontguard-agent) ([live demo](https://frontguard-agent.vercel.app/)) — the runtime detection counterpart to this educational playground. Where the playground teaches you *what* the vulnerabilities are, the agent is what you ship to *detect them* in production.
+
+**Live Demo:** [frontguard-nine.vercel.app](https://frontguard-nine.vercel.app)
 **Landing Page:** `/landing` · **App:** `/`
 
 ---
