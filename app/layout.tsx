@@ -1,6 +1,19 @@
 import type { Metadata, Viewport } from "next";
+import { JetBrains_Mono, Syne } from "next/font/google";
 import "./globals.css";
 import AppShell from "@/components/layout/AppShell";
+
+const jetBrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+});
+
+const syne = Syne({
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "FrontGuard — Frontend Security Playground",
@@ -30,15 +43,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Syne:wght@400;500;600;700;800&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html lang="en" className={`${jetBrainsMono.variable} ${syne.variable}`}>
       <body
         className="bg-[#080810] text-white antialiased"
         style={{ fontFamily: "var(--font-mono)" }}

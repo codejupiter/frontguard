@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import {
-  ShieldCheck, ShieldAlert, CheckCircle, XCircle, Info,
+  ShieldCheck, ShieldAlert, CheckCircle, Info,
   Lock, Globe, Zap, Server, Eye, Smartphone, FileText
 } from "lucide-react";
 import clsx from "clsx";

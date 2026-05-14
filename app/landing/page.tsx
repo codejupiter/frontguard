@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState, useEffect } from "react";
 import {
-  Shield, Code2, KeyRound, Globe, Users, Terminal,
+  Code2, KeyRound, Globe, Users, Terminal,
   ArrowRight, ChevronRight, Zap, Lock, Eye, AlertTriangle,
   CheckCircle, ExternalLink
 } from "lucide-react";
@@ -86,7 +87,7 @@ export default function LandingPage() {
       <nav className="relative z-10 border-b border-[#1a1a2e] bg-[#080810]/80 backdrop-blur-xl">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <img src="/logo.svg" alt="FrontGuard" className="h-9 w-auto" />
+            <Image src="/logo.svg" alt="FrontGuard" width={144} height={36} priority className="h-9 w-auto" />
           </div>
           <div className="flex items-center gap-4">
             <a
@@ -300,7 +301,7 @@ export default function LandingPage() {
       <section className="relative z-10 py-20 px-6 border-t border-[#1a1a2e]">
         <div className="max-w-3xl mx-auto text-center">
           <div className="border border-emerald-500/20 bg-emerald-950/10 rounded-2xl p-12">
-            <img src="/logo-icon.svg" alt="FrontGuard" className="w-20 h-20 mx-auto mb-6" />
+            <Image src="/logo-icon.svg" alt="FrontGuard" width={80} height={80} className="w-20 h-20 mx-auto mb-6" />
             <h2 className="text-4xl font-black text-white mb-4" style={{ fontFamily: "var(--font-display)" }}>
               Ready to break things?
             </h2>
@@ -321,7 +322,7 @@ export default function LandingPage() {
       <footer className="relative z-10 border-t border-[#1a1a2e] py-8 px-6">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src="/logo-icon.svg" alt="" className="w-4 h-4 opacity-40" />
+            <Image src="/logo-icon.svg" alt="" width={16} height={16} className="w-4 h-4 opacity-40" />
             <span className="text-xs font-mono text-zinc-700">FrontGuard — Educational use only. No real systems are harmed.</span>
           </div>
           <span className="text-xs font-mono text-zinc-700">Built by Zoriah Cocio</span>

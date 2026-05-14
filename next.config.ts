@@ -32,6 +32,9 @@ const nextConfig: NextConfig = {
 
   typescript:      { ignoreBuildErrors: false },
   reactStrictMode: true,
+  turbopack: {
+    root: process.cwd(),
+  },
 };
 
 export default nextConfig;

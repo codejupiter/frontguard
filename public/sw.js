@@ -18,6 +18,7 @@ const PRECACHE_URLS = [
   "/api-security",
   "/rbac",
   "/devtools",
+  OFFLINE_URL,
   "/manifest.json",
   "/icons/icon-192x192.png",
   "/icons/icon-512x512.png",

@@ -9,7 +9,7 @@ import {
 import { useSecurity } from "@/lib/store/SecurityContext";
 import clsx from "clsx";
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 
 const modules = [
   { id: "dashboard",    label: "Dashboard",       icon: LayoutDashboard, path: "/" },
@@ -35,7 +35,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const { mode } = useSecurity();
 
   // Close sidebar on route change (mobile)
-  useEffect(() => { onClose(); }, [pathname]);
+  useEffect(() => { onClose(); }, [onClose, pathname]);
 
   const activeColor =
     mode === "attack"

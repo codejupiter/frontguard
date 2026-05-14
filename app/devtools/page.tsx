@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useSecurity } from "@/lib/store/SecurityContext";
 import { ModeCard, SectionHeader, StatusBadge } from "@/components/ui/primitives";
 import InfoPanel from "@/components/ui/InfoPanel";
@@ -22,6 +22,10 @@ export default function DevToolsPage() {
   const [premiumUnlocked, setPremiumUnlocked] = useState(false);
   const [consoleOutput, setConsoleOutput] = useState<string[]>([]);
 
+  const addLine = useCallback((line: string) => {
+    setConsoleOutput((prev) => [line, ...prev].slice(0, 20));
+  }, []);
+
   // Simulate DevTools manipulation detection
   useEffect(() => {
     if (mode === "attack") {
@@ -33,11 +37,7 @@ export default function DevToolsPage() {
         addLog({ type: "exploit", message: "Premium feature unlocked via DevTools JS", module: "devtools" });
       };
     }
-  }, [mode, uiPurchaseLimit]);
-
-  const addLine = (line: string) => {
-    setConsoleOutput((prev) => [line, ...prev].slice(0, 20));
-  };
+  }, [addLine, addLog, mode, uiPurchaseLimit]);
 
   const simulateBypass = () => {
     if (mode === "attack") {
@@ -248,7 +248,7 @@ export default function DevToolsPage() {
                   {showHidden ? "Hide value" : "Inspect hidden field"}
                 </button>
                 {showHidden && (
-                  <p className="text-red-400 mt-1">value="sk_live_xK9mP3abc123secretkey" ← Never put secrets in HTML!</p>
+                  <p className="text-red-400 mt-1">{"value=\"sk_live_xK9mP3abc123secretkey\" <- Never put secrets in HTML!"}</p>
                 )}
               </div>
             </div>

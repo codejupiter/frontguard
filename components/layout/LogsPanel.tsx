@@ -1,7 +1,7 @@
 "use client";
 
 import { useSecurity } from "@/lib/store/SecurityContext";
-import { LogEntry, LogEventType } from "@/types";
+import { LogEntry } from "@/types";
 import { Trash2, Terminal, ChevronUp, ChevronDown, Radio, AlertTriangle } from "lucide-react";
 import clsx from "clsx";
 import { useState, useEffect, useRef } from "react";

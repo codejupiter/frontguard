@@ -1,11 +1,11 @@
 "use client";
 
 import { useSecurity } from "@/lib/store/SecurityContext";
-import { Zap, Shield, Radio, AlertTriangle, Activity } from "lucide-react";
+import { Shield, Radio, AlertTriangle, Activity } from "lucide-react";
 import clsx from "clsx";
 
 export default function StatusBar() {
-  const { statusCounts, isStreaming, logs, mode } = useSecurity();
+  const { isStreaming, logs, mode } = useSecurity();
 
   const thirdPartyFlagged = logs.filter(
     (l) => l.eventType === "Script" && (l.action === "blocked" || l.action === "flagged")
