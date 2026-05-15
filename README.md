@@ -49,6 +49,7 @@ See [DEPLOY.md](./DEPLOY.md) for Vercel/Netlify deployment.
 | 🔴 | **Attack Mode** | Vulnerable implementations. Exploits actually execute |
 | 🟢 | **Secure Mode** | Fixed implementations. Same exploit is neutralized |
 | 📋 | **Security Log** | Real-time log panel on every page tracking exploits, blocks, requests, errors |
+| 📡 | **Security Event Triage** | Suite v2 event ingestion API and dashboard for FrontGuard Agent runtime findings |
 
 ---
 
@@ -122,6 +123,7 @@ Demonstrates raising purchase limits by editing HTML attributes, unlocking premi
 | **API** | Next.js Route Handlers |
 | **Auth** | Manual JWT simulation (no external providers) |
 | **Security** | Nonce-based CSP, request IDs, route-level rate limits |
+| **Telemetry** | Typed event envelope, ingestion route, in-memory demo event store |
 | **Deploy** | Vercel (zero config) |
 
 ---
@@ -157,6 +159,7 @@ securitysystemapp/
 │   ├── devtools/page.tsx       # DevTools Bypass
 │   └── api/
 │       ├── auth/route.ts       # Mock login endpoint
+│       ├── security-events/route.ts # Agent event ingestion prototype
 │       ├── logs/route.ts       # Rate-limited data endpoint
 │       └── rbac/route.ts       # Server-enforced RBAC
 ├── components/
@@ -171,7 +174,7 @@ securitysystemapp/
 │       └── primitives.tsx      # ModeCard, StatusBadge, SectionHeader
 ├── lib/
 │   ├── store/SecurityContext.tsx  # Global state: mode, logs, current user
-│   └── security/utils.ts          # sanitize, rateLimit, JWT, RBAC helpers
+│   └── security/                  # sanitize, rateLimit, JWT, RBAC, event ingestion
 ├── docs/
 │   ├── ARCHITECTURE.md            # System design and security model
 │   └── FRONTGUARD_SUITE.md        # Playground + agent product ecosystem

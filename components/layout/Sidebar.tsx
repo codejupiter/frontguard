@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Code2, KeyRound, Globe, Users, Terminal,
-  LayoutDashboard, ShieldCheck, ExternalLink, X, Menu
+  LayoutDashboard, ShieldCheck, ExternalLink, X, Menu, Activity
 } from "lucide-react";
 import { useSecurity } from "@/lib/store/SecurityContext";
 import clsx from "clsx";
@@ -22,6 +22,7 @@ const modules = [
 
 const extras = [
   { id: "security-status", label: "Security Status", icon: ShieldCheck,  path: "/security-status" },
+  { id: "security-events", label: "Security Events", icon: Activity,     path: "/security-events" },
   { id: "landing",         label: "Landing Page",    icon: ExternalLink,  path: "/landing" },
 ];
 

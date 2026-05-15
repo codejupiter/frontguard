@@ -106,3 +106,28 @@ test("api security module shows the unauthenticated data leak", async ({
     page.getByText(/Unauthenticated request succeeded/i),
   ).toBeVisible();
 });
+
+test("security event dashboard ingests a FrontGuard Agent event", async ({
+  page,
+}, testInfo) => {
+  const appId = `frontguard-smoke-${testInfo.project.name}-${Date.now()}`;
+  await gotoSettled(page, `/security-events?appId=${encodeURIComponent(appId)}`);
+
+  await expect(
+    page.getByRole("heading", { name: "Security Event Triage" }),
+  ).toBeVisible();
+  await expect(page.getByTestId("security-events-empty")).toBeVisible();
+
+  const ingestion = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/security-events") &&
+      response.request().method() === "POST",
+  );
+  await page.getByTestId("event-ingest-button").click();
+  await expect((await ingestion).status()).toBe(202);
+
+  await expect(page.getByTestId("security-event-row")).toHaveCount(1);
+  await expect(page.getByTestId("security-event-row")).toContainText("Script injection");
+  await expect(page.getByTestId("security-event-row")).toContainText("evil.example");
+  await expect(page.getByTestId("security-events-total")).toContainText("1");
+});

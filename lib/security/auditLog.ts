@@ -19,6 +19,7 @@ export type AuditEventType =
   | "input.validation_failure"
   | "admin.action"
   | "security.csp_violation"
+  | "security.agent_event"
   | "security.scan_detected"
   | "rbac.access_denied"
   | "rbac.access_granted";

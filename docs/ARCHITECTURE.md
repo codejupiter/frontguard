@@ -11,6 +11,7 @@ The app is not a scanner and it is not a production identity provider. It is an 
 - Shared security context and event log.
 - Nonce-based CSP in production.
 - Route-level rate limiting and request IDs.
+- Suite v2 event ingestion prototype for FrontGuard Agent findings.
 - Unit tests for security utilities.
 - Playwright smoke tests for the highest-risk flows.
 
@@ -28,6 +29,7 @@ flowchart TD
   App --> Context["SecurityContext"]
   App --> Logs["security log panel"]
   App --> Audit["audit route/event helpers"]
+  App --> AgentEvents["security event ingestion"]
 ```
 
 `proxy.ts` is the platform boundary. It adds request IDs, applies coarse rate limits, blocks obvious scanner traffic, generates the CSP nonce, forwards that nonce to App Router, and attaches security headers to the response.
@@ -48,6 +50,8 @@ Shared UI lives under `components/`:
 - `HintBar`, `InfoPanel`, `StatusPanel`, and primitives keep module education consistent.
 - `OnboardingModal` makes the first-run experience guided without changing the module logic.
 
+The `/security-events` route is the first FrontGuard Suite v2 surface. It consumes the same event envelope described in `frontguard-agent`, calls `POST /api/security-events`, and presents recent findings as a triage queue.
+
 ## Security Utilities
 
 `lib/security/` owns reusable behavior:
@@ -57,6 +61,7 @@ Shared UI lives under `components/`:
 - Role permission checks.
 - In-memory rate limiting.
 - Audit event creation and event context.
+- FrontGuard Agent event-envelope validation, sanitization, in-memory storage, summary stats, and filtering.
 
 The tokens and rate limits are intentionally simple because the app is a playground. The documentation and UI call out where a real product would use signed JWT/session cookies, Redis-backed rate limits, durable audit storage, and a real identity provider.
 
@@ -92,6 +97,7 @@ Unit tests cover security primitives:
 - Rate-limit behavior.
 - Mock token handling.
 - RBAC permission checks.
+- Security event envelope validation, sanitization, ingestion summaries, and severity filtering.
 
 Playwright smoke tests cover production behavior:
 
@@ -99,6 +105,7 @@ Playwright smoke tests cover production behavior:
 - Mode switching.
 - XSS attack and secure rendering paths.
 - API leak and protected behavior.
+- Security event dashboard ingestion flow.
 - CSP nonce/header behavior indirectly through production hydration.
 
 ## Production Hardening Path
@@ -110,8 +117,8 @@ If FrontGuard became a real security education SaaS platform, the next backend l
 - Durable audit/event storage.
 - Redis/Upstash rate limits.
 - Per-organization modules and assignments.
-- Real CSP report ingestion.
-- Admin dashboard for vulnerable-pattern analytics.
+- Real CSP report ingestion and FrontGuard Agent event ingestion.
+- Admin dashboard for vulnerable-pattern analytics and runtime event triage.
 
 The suite roadmap expands this into event ingestion, triage dashboards, organization workflows, and a clean contract between the browser package and the SaaS backend.
 
@@ -124,3 +131,4 @@ The suite roadmap expands this into event ingestion, triage dashboards, organiza
 - How rate limiting differs between playground state and production enforcement.
 - How the companion `frontguard-agent` completes the education-to-detection story.
 - How a future ingestion API would consume agent events without coupling the browser package to one backend.
+- Why the current event store is intentionally in-memory and where a production database or stream boundary would live.

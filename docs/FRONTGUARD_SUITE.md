@@ -19,13 +19,14 @@ That makes the suite useful as a portfolio product because it demonstrates produ
 |---|---|---|---|
 | [FrontGuard Playground](https://github.com/codejupiter/frontguard) | Live app | Frontend teams, junior engineers, security-minded product teams | Teach XSS, auth storage, API exposure, RBAC, and client-side bypasses with safe interactive demos. |
 | [FrontGuard Agent](https://github.com/codejupiter/frontguard-agent) | Package-ready demo | SaaS teams, platform teams, security-conscious frontend teams | Detect script injection, iframe injection, and suspicious DOM mutations inside real browser sessions. |
-| Event ingestion API | Planned | Security/product engineering teams | Accept agent events, validate payloads, rate-limit writes, and store normalized security signals. |
-| Security operations dashboard | Planned | Engineering managers, app owners, security reviewers | Triage events by severity, application, session, source, browser, and release. |
+| Event ingestion API | Prototype | Security/product engineering teams | Accept agent events, validate payloads, rate-limit writes, and store normalized security signals. |
+| Security operations dashboard | Prototype | Engineering managers, app owners, security reviewers | Triage events by severity, application, session, source, browser, and release. |
 
 ## Current Live Surfaces
 
 - Playground: [frontguard-nine.vercel.app](https://frontguard-nine.vercel.app)
 - Agent demo: [frontguard-agent.vercel.app](https://frontguard-agent.vercel.app)
+- Event triage prototype: `/security-events`
 
 ## Architecture Direction
 
@@ -34,8 +35,8 @@ flowchart LR
   Playground["FrontGuard Playground\nsafe exploit education"] --> ThreatModel["shared browser threat model"]
   ThreatModel --> Agent["FrontGuard Agent\nruntime detector"]
   Agent --> Callback["onEvent callback\nSecurityEvent"]
-  Callback --> Ingestion["planned ingestion API\nvalidate, rate limit, persist"]
-  Ingestion --> Dashboard["planned dashboard\ntriage, trends, workflows"]
+  Callback --> Ingestion["/api/security-events\nvalidate, rate limit, normalize"]
+  Ingestion --> Dashboard["/security-events\ntriage, filters, review queue"]
 ```
 
 The playground and agent should remain separate projects. That separation keeps the playground free to include intentionally vulnerable examples while the agent stays package-quality, small, dependency-light, and safe to embed in real applications.
@@ -57,7 +58,7 @@ interface SecurityEvent {
 }
 ```
 
-A production FrontGuard ingestion layer would wrap these events with account and delivery metadata:
+The current prototype accepts these events at `POST /api/security-events` inside an app-level envelope:
 
 ```ts
 interface FrontGuardEventEnvelope {
@@ -70,7 +71,7 @@ interface FrontGuardEventEnvelope {
 }
 ```
 
-That boundary keeps the browser package privacy-aware and transport-agnostic while letting the SaaS layer handle tenancy, retention, analytics, alerting, and access control.
+That boundary keeps the browser package privacy-aware and transport-agnostic while letting the SaaS layer handle tenancy, retention, analytics, alerting, and access control. The prototype stores recent events in memory; a production version would replace that store with Postgres, Redis streams, or a dedicated event pipeline.
 
 ## Roadmap
 
@@ -78,8 +79,8 @@ That boundary keeps the browser package privacy-aware and transport-agnostic whi
 |---|---|---|
 | 1. Education | Playground with attack and secure modes | Next.js App Router, security headers, route handlers, responsive product UI, Playwright smoke tests. |
 | 2. Runtime package | Agent with typed API and small bundle | TypeScript library design, MutationObserver lifecycle, package exports, compatibility docs, dry-run packaging. |
-| 3. Ingestion | Event API and durable storage | Authenticated API design, schema validation, rate limits, queueing, database modeling. |
-| 4. Dashboard | Security triage workspace | Data visualization, filtering, severity workflows, realtime updates, accessibility. |
+| 3. Ingestion | Event API prototype, then durable storage | Authenticated API design, schema validation, rate limits, queueing, database modeling. |
+| 4. Dashboard | Security triage workspace prototype | Data visualization, filtering, severity workflows, realtime updates, accessibility. |
 | 5. Organization layer | Teams, projects, policies, reports | RBAC, audit logs, billing-ready product boundaries, compliance-friendly documentation. |
 
 ## Differentiation
