@@ -8,6 +8,13 @@
 
 ---
 
+## Documentation
+
+- [Architecture](./docs/ARCHITECTURE.md) — product boundary, request flow, module architecture, CSP design, state model, production hardening path, and interview talking points.
+- [Deployment](./DEPLOY.md) — Vercel/Netlify deployment guide.
+
+---
+
 ## Overview
 
 FrontGuard lets developers **trigger real exploits in a safe sandbox** — then see exactly how to fix them. Every module has:
@@ -27,7 +34,7 @@ npm install && npm run dev
 # Open http://localhost:3000/landing
 ```
 
-See [DEPLOY.md](./DEPLOY.md) for Vercel/Netlify deployment (5 minutes).
+See [DEPLOY.md](./DEPLOY.md) for Vercel/Netlify deployment.
 
 ---
 
