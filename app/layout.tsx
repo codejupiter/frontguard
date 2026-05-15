@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono, Syne } from "next/font/google";
+import { connection } from "next/server";
 import "./globals.css";
 import AppShell from "@/components/layout/AppShell";
 
@@ -41,7 +42,9 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  await connection();
+
   return (
     <html lang="en" className={`${jetBrainsMono.variable} ${syne.variable}`}>
       <body

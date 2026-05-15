@@ -198,7 +198,10 @@ export default function APISecurityPage() {
                     {log.blocked ? (log.status === 401 ? "Unauthorized" : "Rate Limited") : "Success"}
                   </span>
                 </div>
-                <pre className="text-zinc-500 text-[10px] overflow-x-auto whitespace-pre-wrap break-all">
+                <pre
+                  data-testid="api-response-body"
+                  className="text-zinc-500 text-[10px] overflow-x-auto whitespace-pre-wrap break-all"
+                >
                   {JSON.stringify(log.response, null, 2).slice(0, 300)}
                 </pre>
               </div>

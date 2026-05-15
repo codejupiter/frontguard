@@ -123,6 +123,7 @@ export default function XSSPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <ModeCard mode="attack" title={mode === "attack" ? "⚠ Unsafe Output (innerHTML)" : "Unsafe Output — Disabled in Secure Mode"}>
           <div
+            data-testid="unsafe-xss-output"
             ref={unsafeRef}
             className={clsx(
               "min-h-[100px] p-4 rounded-xl border text-sm transition-all duration-300",
@@ -142,7 +143,10 @@ export default function XSSPage() {
         </ModeCard>
 
         <ModeCard mode="secure" title="Safe Output (textContent / escaped)">
-          <div className="min-h-[100px] p-4 rounded-xl border border-emerald-500/20 bg-black/20 text-sm font-mono text-zinc-300 break-all">
+          <div
+            data-testid="safe-xss-output"
+            className="min-h-[100px] p-4 rounded-xl border border-emerald-500/20 bg-black/20 text-sm font-mono text-zinc-300 break-all"
+          >
             {safeOutput || <span className="text-zinc-700 text-xs">Sanitized output appears here...</span>}
           </div>
           <div className="flex items-center gap-2 text-xs text-emerald-400 font-mono bg-emerald-400/5 px-3 py-2 rounded-lg border border-emerald-400/20">

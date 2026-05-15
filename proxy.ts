@@ -162,21 +162,22 @@ export function proxy(request: NextRequest) {
     });
   }
 
-  // 5. Generate CSP nonce and build response with security headers
+  // 5. Generate CSP nonce and forward the policy so Next can nonce its scripts.
   const nonce = generateNonce();
+  const csp = buildCSP(nonce);
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("x-request-id", requestId);
+  requestHeaders.set("x-real-ip", ip);
+  requestHeaders.set("Content-Security-Policy", csp);
+
   const response = NextResponse.next({
     request: {
-      headers: new Headers({
-        ...Object.fromEntries(request.headers.entries()),
-        "x-nonce": nonce,
-        "x-request-id": requestId,
-        "x-real-ip": ip,
-      }),
+      headers: requestHeaders,
     },
   });
 
   // 6. Attach all security headers
-  const csp = buildCSP(nonce);
   response.headers.set("Content-Security-Policy", csp);
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("X-Frame-Options", "DENY");

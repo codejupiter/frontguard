@@ -9,7 +9,9 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit --pretty false",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "smoke": "playwright test",
+    "smoke:ui": "playwright test --ui"
   },
   "dependencies": {
     "@types/dompurify": "^3.0.5",
@@ -23,6 +25,7 @@
     "uuid": "^14.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

@@ -105,7 +105,7 @@ Demonstrates raising purchase limits by editing HTML attributes, unlocking premi
 
 | | |
 |---|---|
-| **Framework** | Next.js 15 (App Router) |
+| **Framework** | Next.js 16 (App Router) |
 | **Language** | TypeScript (strict) |
 | **Styling** | Tailwind CSS v4 |
 | **Fonts** | JetBrains Mono + Syne |
@@ -113,7 +113,24 @@ Demonstrates raising purchase limits by editing HTML attributes, unlocking premi
 | **State** | React Context API |
 | **API** | Next.js Route Handlers |
 | **Auth** | Manual JWT simulation (no external providers) |
+| **Security** | Nonce-based CSP, request IDs, route-level rate limits |
 | **Deploy** | Vercel (zero config) |
+
+---
+
+## Quality Gates
+
+FrontGuard ships with both unit-level security checks and production smoke coverage:
+
+```bash
+npm run lint       # ESLint + Next.js rules
+npm run typecheck  # Strict TypeScript validation
+npm run test       # Vitest coverage for security utilities
+npm run build      # Production App Router build
+npm run smoke      # Playwright desktop/mobile smoke tests
+```
+
+The CI workflow runs lint, typecheck, unit tests, production build, installs Chromium, then executes Playwright against `next start`. The smoke suite covers the landing page, dashboard shell, XSS attack/secure modes, and unauthenticated API leak demo. Production routes render dynamically so the proxy can forward a fresh CSP nonce for Next.js runtime scripts.
 
 ---
 
@@ -148,6 +165,7 @@ securitysystemapp/
 │   ├── store/SecurityContext.tsx  # Global state: mode, logs, current user
 │   └── security/utils.ts          # sanitize, rateLimit, JWT, RBAC helpers
 ├── types/index.ts
+├── proxy.ts                    # CSP nonce, request IDs, bot blocking, rate limits
 ├── vercel.json                 # Vercel deployment + security headers
 └── DEPLOY.md                   # Deployment guide
 ```
