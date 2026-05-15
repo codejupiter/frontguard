@@ -50,7 +50,7 @@ Shared UI lives under `components/`:
 - `HintBar`, `InfoPanel`, `StatusPanel`, and primitives keep module education consistent.
 - `OnboardingModal` makes the first-run experience guided without changing the module logic.
 
-The `/security-events` route is the first FrontGuard Suite v2 surface. It consumes the same event envelope described in `frontguard-agent`, calls `POST /api/security-events`, and presents recent findings as a triage queue.
+The `/security-events` route is the first FrontGuard Suite v2 surface. It consumes the same event envelope described in `frontguard-agent`, calls `POST /api/security-events`, resolves org/project metadata, and presents recent findings as a tenant-scoped triage queue.
 
 ## Security Utilities
 
@@ -61,7 +61,7 @@ The `/security-events` route is the first FrontGuard Suite v2 surface. It consum
 - Role permission checks.
 - In-memory rate limiting.
 - Audit event creation and event context.
-- FrontGuard Agent event-envelope validation, sanitization, in-memory storage, summary stats, and filtering.
+- FrontGuard Agent event-envelope validation, sanitization, memory/Redis REST storage, summary stats, and workspace filtering.
 
 The tokens and rate limits are intentionally simple because the app is a playground. The documentation and UI call out where a real product would use signed JWT/session cookies, Redis-backed rate limits, durable audit storage, and a real identity provider.
 
@@ -131,4 +131,4 @@ The suite roadmap expands this into event ingestion, triage dashboards, organiza
 - How rate limiting differs between playground state and production enforcement.
 - How the companion `frontguard-agent` completes the education-to-detection story.
 - How a future ingestion API would consume agent events without coupling the browser package to one backend.
-- Why the current event store is intentionally in-memory and where a production database or stream boundary would live.
+- Why the event store defaults to memory locally, how the Redis REST adapter changes persistence behavior, and where a production database or stream boundary would live.

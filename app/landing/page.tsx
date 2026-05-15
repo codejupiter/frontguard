@@ -87,7 +87,13 @@ export default function LandingPage() {
       <nav className="relative z-10 border-b border-[#1a1a2e] bg-[#080810]/80 backdrop-blur-xl">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <Image src="/logo.svg" alt="FrontGuard" width={144} height={36} priority className="h-9 w-auto" />
+            <Image
+              src="/logo.svg"
+              alt="FrontGuard"
+              width={144}
+              height={36}
+              priority
+            />
           </div>
           <div className="flex items-center gap-4">
             <a

@@ -20,6 +20,7 @@ export type AuditEventType =
   | "admin.action"
   | "security.csp_violation"
   | "security.agent_event"
+  | "security.storage_error"
   | "security.scan_detected"
   | "rbac.access_denied"
   | "rbac.access_granted";

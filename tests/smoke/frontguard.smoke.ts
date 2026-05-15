@@ -110,6 +110,8 @@ test("api security module shows the unauthenticated data leak", async ({
 test("security event dashboard ingests a FrontGuard Agent event", async ({
   page,
 }, testInfo) => {
+  const orgId = "frontguard-labs";
+  const projectId = "smoke-tests";
   const appId = `frontguard-smoke-${testInfo.project.name}-${Date.now()}`;
   const preflight = await page.request.fetch("/api/security-events", {
     method: "OPTIONS",
@@ -125,7 +127,10 @@ test("security event dashboard ingests a FrontGuard Agent event", async ({
     "https://frontguard-agent.vercel.app",
   );
 
-  await gotoSettled(page, `/security-events?appId=${encodeURIComponent(appId)}`);
+  await gotoSettled(
+    page,
+    `/security-events?orgId=${encodeURIComponent(orgId)}&projectId=${encodeURIComponent(projectId)}&appId=${encodeURIComponent(appId)}`,
+  );
 
   await expect(
     page.getByRole("heading", { name: "Security Event Triage" }),
@@ -142,6 +147,8 @@ test("security event dashboard ingests a FrontGuard Agent event", async ({
 
   await expect(page.getByTestId("security-event-row")).toHaveCount(1);
   await expect(page.getByTestId("security-event-row")).toContainText("Script injection");
+  await expect(page.getByTestId("security-event-row")).toContainText(orgId);
+  await expect(page.getByTestId("security-event-row")).toContainText(projectId);
   await expect(page.getByTestId("security-event-row")).toContainText("evil.example");
   await expect(page.getByTestId("security-events-total")).toContainText("1");
 });

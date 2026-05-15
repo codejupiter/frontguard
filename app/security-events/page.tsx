@@ -6,12 +6,14 @@ import clsx from "clsx";
 import {
   Activity,
   AlertTriangle,
+  Boxes,
+  Building2,
   Database,
   Filter,
   Radio,
   RefreshCw,
   Send,
-  ShieldCheck,
+  Server,
   Trash2,
 } from "lucide-react";
 
@@ -21,6 +23,7 @@ type SecurityEventType =
   | "dom.suspicious-attribute";
 type SecurityEventSeverity = "low" | "medium" | "high" | "critical";
 type FrontGuardEnvironment = "production" | "preview" | "development";
+type SecurityEventStorageMode = "memory" | "redis";
 
 interface IngestedSecurityEvent {
   id: string;
@@ -29,6 +32,10 @@ interface IngestedSecurityEvent {
   timestamp: number;
   url: string;
   details: Record<string, unknown>;
+  orgId: string;
+  orgName: string;
+  projectId: string;
+  projectName: string;
   appId: string;
   environment: FrontGuardEnvironment;
   release?: string;
@@ -41,16 +48,34 @@ interface IngestedSecurityEvent {
 
 interface EventSummary {
   total: number;
+  orgs: number;
+  projects: number;
   apps: number;
+  storageMode: SecurityEventStorageMode;
   latestReceivedAt: string | null;
   bySeverity: Record<SecurityEventSeverity, number>;
   byType: Record<SecurityEventType, number>;
+}
+
+interface FrontGuardWorkspaceProject {
+  projectId: string;
+  appId: string;
+  name: string;
+  environment: FrontGuardEnvironment;
+}
+
+interface FrontGuardWorkspace {
+  orgId: string;
+  orgName: string;
+  projects: FrontGuardWorkspaceProject[];
 }
 
 interface EventsResponse {
   ok: boolean;
   events: IngestedSecurityEvent[];
   summary: EventSummary;
+  storage: SecurityEventStorageMode;
+  workspaces: FrontGuardWorkspace[];
 }
 
 const severityStyles: Record<
@@ -95,7 +120,10 @@ const eventTypeLabels: Record<SecurityEventType, string> = {
 
 const emptySummary: EventSummary = {
   total: 0,
+  orgs: 0,
+  projects: 0,
   apps: 0,
+  storageMode: "memory",
   latestReceivedAt: null,
   bySeverity: { low: 0, medium: 0, high: 0, critical: 0 },
   byType: {
@@ -104,6 +132,47 @@ const emptySummary: EventSummary = {
     "dom.suspicious-attribute": 0,
   },
 };
+
+interface WorkspaceFilters {
+  orgId: string;
+  projectId: string;
+  appId: string;
+}
+
+const emptyWorkspaceFilters: WorkspaceFilters = {
+  orgId: "",
+  projectId: "",
+  appId: "",
+};
+
+const workspaceFilterControls = [
+  { key: "orgId", label: "Org ID", placeholder: "frontguard-labs" },
+  { key: "projectId", label: "Project ID", placeholder: "agent-demo" },
+  { key: "appId", label: "App ID", placeholder: "frontguard-agent-demo" },
+] as const satisfies readonly {
+  key: keyof WorkspaceFilters;
+  label: string;
+  placeholder: string;
+}[];
+
+function readInitialWorkspaceFilters(): WorkspaceFilters {
+  if (typeof window === "undefined") return emptyWorkspaceFilters;
+
+  const params = new URLSearchParams(window.location.search);
+  return {
+    orgId: params.get("orgId") ?? "",
+    projectId: params.get("projectId") ?? "",
+    appId: params.get("appId") ?? "",
+  };
+}
+
+function normalizeWorkspaceFilters(filters: WorkspaceFilters): WorkspaceFilters {
+  return {
+    orgId: filters.orgId.trim(),
+    projectId: filters.projectId.trim(),
+    appId: filters.appId.trim(),
+  };
+}
 
 function formatTime(value: string | number): string {
   const date = new Date(value);
@@ -128,11 +197,13 @@ function detailPreview(details: Record<string, unknown>): string {
 
 async function fetchSecurityEvents(
   severityFilter: SecurityEventSeverity | "all",
-  appIdFilter: string
+  filters: WorkspaceFilters
 ): Promise<EventsResponse> {
   const params = new URLSearchParams({ limit: "50" });
   if (severityFilter !== "all") params.set("severity", severityFilter);
-  if (appIdFilter) params.set("appId", appIdFilter);
+  if (filters.orgId) params.set("orgId", filters.orgId);
+  if (filters.projectId) params.set("projectId", filters.projectId);
+  if (filters.appId) params.set("appId", filters.appId);
 
   const response = await fetch(`/api/security-events?${params.toString()}`, {
     cache: "no-store",
@@ -149,19 +220,22 @@ export default function SecurityEventsPage() {
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [severityFilter, setSeverityFilter] = useState<SecurityEventSeverity | "all">("all");
-  const [appIdFilter] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return new URLSearchParams(window.location.search).get("appId") ?? "";
-  });
+  const [draftFilters, setDraftFilters] = useState(readInitialWorkspaceFilters);
+  const [queryFilters, setQueryFilters] = useState(readInitialWorkspaceFilters);
+  const [workspaces, setWorkspaces] = useState<FrontGuardWorkspace[]>([]);
 
-  async function loadEvents() {
+  async function loadEvents(
+    filters = queryFilters,
+    severity = severityFilter
+  ) {
     setLoading(true);
     setError(null);
 
     try {
-      const data = await fetchSecurityEvents(severityFilter, appIdFilter);
+      const data = await fetchSecurityEvents(severity, normalizeWorkspaceFilters(filters));
       setEvents(data.events);
       setSummary(data.summary);
+      setWorkspaces(data.workspaces ?? []);
     } catch {
       setError("Security event stream is unavailable.");
     } finally {
@@ -171,12 +245,14 @@ export default function SecurityEventsPage() {
 
   useEffect(() => {
     let cancelled = false;
+    const filters = normalizeWorkspaceFilters(queryFilters);
 
-    fetchSecurityEvents(severityFilter, appIdFilter)
+    fetchSecurityEvents(severityFilter, filters)
       .then((data) => {
         if (cancelled) return;
         setEvents(data.events);
         setSummary(data.summary);
+        setWorkspaces(data.workspaces ?? []);
         setError(null);
       })
       .catch(() => {
@@ -189,16 +265,34 @@ export default function SecurityEventsPage() {
     return () => {
       cancelled = true;
     };
-  }, [appIdFilter, severityFilter]);
+  }, [queryFilters, severityFilter]);
 
   const highPriorityCount = summary.bySeverity.critical + summary.bySeverity.high;
+
+  function applyWorkspaceFilters() {
+    setQueryFilters(normalizeWorkspaceFilters(draftFilters));
+  }
+
+  function resetWorkspaceFilters() {
+    setDraftFilters({ ...emptyWorkspaceFilters });
+    setQueryFilters({ ...emptyWorkspaceFilters });
+    setSeverityFilter("all");
+  }
 
   async function sendSampleEvent() {
     setPosting(true);
     setError(null);
+    const draft = normalizeWorkspaceFilters(draftFilters);
+    const sampleFilters = {
+      orgId: draft.orgId || "frontguard-labs",
+      projectId: draft.projectId || "agent-demo",
+      appId: draft.appId || "frontguard-agent-demo",
+    };
 
     const sampleEnvelope = {
-      appId: appIdFilter || "frontguard-playground",
+      orgId: sampleFilters.orgId,
+      projectId: sampleFilters.projectId,
+      appId: sampleFilters.appId,
       environment: "preview",
       release: "suite-v2-demo",
       sessionId: `demo-${Date.now().toString(36)}`,
@@ -225,7 +319,9 @@ export default function SecurityEventsPage() {
         body: JSON.stringify(sampleEnvelope),
       });
       if (response.status !== 202) throw new Error(`HTTP ${response.status}`);
-      await loadEvents();
+      setDraftFilters(sampleFilters);
+      setQueryFilters(sampleFilters);
+      await loadEvents(sampleFilters);
     } catch {
       setError("Sample event could not be ingested.");
     } finally {
@@ -248,7 +344,7 @@ export default function SecurityEventsPage() {
   }
 
   return (
-    <div data-testid="security-events-dashboard" className="max-w-6xl mx-auto space-y-5">
+    <div data-testid="security-events-dashboard" className="w-full max-w-6xl mx-auto space-y-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <div className="flex items-center gap-2.5 mb-2">
@@ -262,7 +358,7 @@ export default function SecurityEventsPage() {
           </h1>
           <p className="text-zinc-500 text-sm leading-relaxed max-w-2xl mt-2">
             Prototype ingestion for FrontGuard Agent events. The browser package emits runtime findings,
-            this app validates the envelope, stores recent events, and presents a security review queue.
+            this app validates tenant-scoped envelopes, persists recent events, and presents a security review queue.
           </p>
         </div>
 
@@ -277,7 +373,7 @@ export default function SecurityEventsPage() {
             {posting ? "Sending..." : "Send Sample Event"}
           </button>
           <button
-            onClick={loadEvents}
+            onClick={() => void loadEvents()}
             disabled={loading}
             className="inline-flex items-center justify-center w-10 h-10 text-zinc-500 border border-zinc-800 rounded-lg hover:border-zinc-600 hover:text-zinc-300 disabled:opacity-50 transition-all"
             aria-label="Refresh events"
@@ -293,16 +389,17 @@ export default function SecurityEventsPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
         {[
           { label: "Events", value: summary.total, icon: Activity, color: "text-white", testId: "security-events-total" },
           { label: "High Priority", value: highPriorityCount, icon: AlertTriangle, color: "text-red-300" },
-          { label: "Apps", value: summary.apps, icon: Database, color: "text-blue-300" },
+          { label: "Orgs", value: summary.orgs, icon: Building2, color: "text-cyan-300" },
+          { label: "Projects", value: summary.projects, icon: Boxes, color: "text-blue-300" },
           {
-            label: "Latest",
-            value: summary.latestReceivedAt ? formatTime(summary.latestReceivedAt) : "none",
-            icon: ShieldCheck,
-            color: "text-emerald-300",
+            label: "Storage",
+            value: summary.storageMode === "redis" ? "Redis" : "Memory",
+            icon: Server,
+            color: summary.storageMode === "redis" ? "text-emerald-300" : "text-zinc-300",
           },
         ].map(({ label, value, icon: Icon, color, testId }) => (
           <div key={label} className="border border-[#1a1a2e] bg-[#0d0d18] rounded-xl p-4">
@@ -319,10 +416,59 @@ export default function SecurityEventsPage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-4">
         <section className="space-y-3">
+          <div className="border border-[#1a1a2e] bg-[#0d0d18] rounded-xl p-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
+              <div className="flex items-center gap-2 text-xs font-mono text-zinc-500">
+                <Filter size={12} />
+                Workspace filters
+              </div>
+              <div className="text-[10px] font-mono text-zinc-600">
+                {summary.apps} app{summary.apps === 1 ? "" : "s"} in scope
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-3">
+              {workspaceFilterControls.map(({ key, label, placeholder }) => (
+                <label key={key} className="block">
+                  <span className="block text-[10px] uppercase tracking-widest text-zinc-700 font-mono mb-1.5">
+                    {label}
+                  </span>
+                  <input
+                    value={draftFilters[key]}
+                    onChange={(event) =>
+                      setDraftFilters((current) => ({
+                        ...current,
+                        [key]: event.target.value,
+                      }))
+                    }
+                    placeholder={placeholder}
+                    className="w-full rounded-lg border border-zinc-800 bg-black/20 px-3 py-2 text-xs font-mono text-zinc-300 outline-none transition-colors placeholder:text-zinc-700 focus:border-emerald-500/50"
+                  />
+                </label>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2 mt-3">
+              <button
+                data-testid="security-events-apply-filters"
+                onClick={applyWorkspaceFilters}
+                className="inline-flex items-center gap-2 px-3 py-2 text-xs font-mono font-bold text-white bg-white/10 border border-zinc-700 rounded-lg hover:border-zinc-500 transition-all"
+              >
+                Apply filters
+              </button>
+              <button
+                onClick={resetWorkspaceFilters}
+                className="inline-flex items-center gap-2 px-3 py-2 text-xs font-mono text-zinc-600 border border-zinc-800 rounded-lg hover:border-zinc-600 hover:text-zinc-300 transition-all"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2 text-xs font-mono text-zinc-500">
               <Filter size={12} />
-              Filter by severity
+              Severity
             </div>
             <button
               data-testid="security-events-clear"
@@ -389,17 +535,24 @@ export default function SecurityEventsPage() {
                     <div className="text-right text-[10px] font-mono text-zinc-600 shrink-0">
                       <p>{formatTime(event.receivedAt)}</p>
                       <p>{event.environment}</p>
+                      <p className="max-w-32 truncate">{event.requestId}</p>
                     </div>
                   </div>
 
-                  <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-2 text-[10px] font-mono">
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-2 text-[10px] font-mono">
+                    <div className="rounded-lg border border-black/20 bg-black/20 p-2 min-w-0">
+                      <p className="text-zinc-700 uppercase mb-1">Org</p>
+                      <p className="text-zinc-300 break-all">{event.orgName}</p>
+                      <p className="text-zinc-600 break-all">{event.orgId}</p>
+                    </div>
+                    <div className="rounded-lg border border-black/20 bg-black/20 p-2 min-w-0">
+                      <p className="text-zinc-700 uppercase mb-1">Project</p>
+                      <p className="text-zinc-300 break-all">{event.projectName}</p>
+                      <p className="text-zinc-600 break-all">{event.projectId}</p>
+                    </div>
                     <div className="rounded-lg border border-black/20 bg-black/20 p-2 min-w-0">
                       <p className="text-zinc-700 uppercase mb-1">App</p>
                       <p className="text-zinc-400 break-all">{event.appId}</p>
-                    </div>
-                    <div className="rounded-lg border border-black/20 bg-black/20 p-2 min-w-0">
-                      <p className="text-zinc-700 uppercase mb-1">Request</p>
-                      <p className="text-zinc-400 break-all">{event.requestId}</p>
                     </div>
                     <div className="rounded-lg border border-black/20 bg-black/20 p-2 min-w-0">
                       <p className="text-zinc-700 uppercase mb-1">Page URL</p>
@@ -414,9 +567,37 @@ export default function SecurityEventsPage() {
 
         <aside className="space-y-4">
           <div className="border border-[#1a1a2e] bg-[#0d0d18] rounded-xl p-4">
+            <p className="text-sm font-bold text-white font-mono mb-3">Workspace Model</p>
+            <div className="space-y-3">
+              {workspaces.length > 0 ? (
+                workspaces.slice(0, 2).map((workspace) => (
+                  <div key={workspace.orgId} className="rounded-lg border border-zinc-800 bg-black/20 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-bold text-zinc-300 font-mono">{workspace.orgName}</p>
+                      <span className="text-[10px] text-zinc-600 font-mono">{workspace.orgId}</span>
+                    </div>
+                    <div className="mt-2 space-y-1.5">
+                      {workspace.projects.slice(0, 3).map((project) => (
+                        <div key={project.projectId} className="flex items-center justify-between gap-2 text-[10px] font-mono">
+                          <span className="text-zinc-500 truncate">{project.name}</span>
+                          <span className="text-zinc-700 shrink-0">{project.projectId}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-zinc-600 font-mono">Loading workspace registry...</p>
+              )}
+            </div>
+          </div>
+
+          <div className="border border-[#1a1a2e] bg-[#0d0d18] rounded-xl p-4">
             <p className="text-sm font-bold text-white font-mono mb-2">Event Contract</p>
             <pre className="overflow-x-auto text-[10px] leading-relaxed text-zinc-500 bg-black/30 border border-zinc-800 rounded-lg p-3">
 {`{
+  "orgId": "frontguard-labs",
+  "projectId": "agent-demo",
   "appId": "frontguard-playground",
   "environment": "preview",
   "events": [{
@@ -447,8 +628,8 @@ export default function SecurityEventsPage() {
           <div className="border border-blue-500/20 bg-blue-950/5 rounded-xl p-4">
             <p className="text-sm font-bold text-white font-mono mb-2">Production Path</p>
             <p className="text-xs text-zinc-500 leading-relaxed">
-              Replace the in-memory demo store with Postgres or an event stream, authenticate
-              app writes, add tenant-scoped retention, and alert on critical findings.
+              Redis REST activates when storage credentials are present. Next layers:
+              app-scoped write tokens, retention policies, project RBAC, and critical alerts.
             </p>
           </div>
         </aside>

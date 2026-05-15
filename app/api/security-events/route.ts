@@ -3,9 +3,11 @@ import { buildEventContext, writeAuditEvent } from "@/lib/security/auditLog";
 import { safeParseBody, sanitizeString } from "@/lib/security/sanitize";
 import {
   clearSecurityEvents,
+  FRONTGUARD_WORKSPACES,
   getHighestSeverity,
   getSecurityEvents,
   getSecurityEventSummary,
+  getSecurityEventStorageMode,
   ingestSecurityEventEnvelope,
   SECURITY_EVENT_SEVERITIES,
   SECURITY_EVENT_TYPES,
@@ -121,19 +123,41 @@ function readType(req: NextRequest): SecurityEventType | undefined {
     : undefined;
 }
 
-export async function GET(req: NextRequest) {
-  const events = getSecurityEvents({
-    appId: sanitizeString(req.nextUrl.searchParams.get("appId") ?? "", 80) || undefined,
-    severity: readSeverity(req),
-    type: readType(req),
-    limit: readLimit(req),
-  });
+function readIdentifier(req: NextRequest, key: string): string | undefined {
+  return sanitizeString(req.nextUrl.searchParams.get(key) ?? "", 80) || undefined;
+}
 
-  return json(req, {
-    ok: true,
-    events,
-    summary: getSecurityEventSummary(events),
-  });
+export async function GET(req: NextRequest) {
+  const storageMode = getSecurityEventStorageMode();
+
+  try {
+    const events = await getSecurityEvents({
+      orgId: readIdentifier(req, "orgId"),
+      projectId: readIdentifier(req, "projectId"),
+      appId: readIdentifier(req, "appId"),
+      severity: readSeverity(req),
+      type: readType(req),
+      limit: readLimit(req),
+    });
+
+    return json(req, {
+      ok: true,
+      events,
+      summary: getSecurityEventSummary(events, storageMode),
+      storage: storageMode,
+      workspaces: FRONTGUARD_WORKSPACES,
+    });
+  } catch {
+    return json(
+      req,
+      {
+        ok: false,
+        error: "Security event storage is unavailable",
+        storage: storageMode,
+      },
+      { status: 503 }
+    );
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -170,11 +194,33 @@ export async function POST(req: NextRequest) {
     return json(req, { ok: false, errors: validated.errors }, { status: 400 });
   }
 
-  const ingested = ingestSecurityEventEnvelope(validated.data, {
-    requestId: ctx.requestId,
-    sourceIp: ctx.ip,
-    userAgent: ctx.userAgent,
-  });
+  const storageMode = getSecurityEventStorageMode();
+  let ingested: Awaited<ReturnType<typeof ingestSecurityEventEnvelope>>;
+
+  try {
+    ingested = await ingestSecurityEventEnvelope(validated.data, {
+      requestId: ctx.requestId,
+      sourceIp: ctx.ip,
+      userAgent: ctx.userAgent,
+    });
+  } catch {
+    writeAuditEvent({
+      type: "security.storage_error",
+      ...ctx,
+      severity: "high",
+      detail: {
+        endpoint: "/api/security-events",
+        storageMode,
+      },
+    });
+
+    return json(
+      req,
+      { ok: false, error: "Security event storage is unavailable", storage: storageMode },
+      { status: 503 }
+    );
+  }
+
   const severity = getHighestSeverity(ingested);
 
   writeAuditEvent({
@@ -190,13 +236,22 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  let summaryEvents = ingested;
+  try {
+    summaryEvents = await getSecurityEvents({ limit: 200 });
+  } catch {
+    summaryEvents = ingested;
+  }
+
   return json(
     req,
     {
       ok: true,
       accepted: ingested.length,
       events: ingested,
-      summary: getSecurityEventSummary(),
+      summary: getSecurityEventSummary(summaryEvents, storageMode),
+      storage: storageMode,
+      workspaces: FRONTGUARD_WORKSPACES,
     },
     { status: 202 }
   );
@@ -207,7 +262,17 @@ export async function DELETE(req: NextRequest) {
   if (forbidden) return forbidden;
 
   const ctx = buildEventContext(req);
-  clearSecurityEvents();
+  const storageMode = getSecurityEventStorageMode();
+
+  try {
+    await clearSecurityEvents();
+  } catch {
+    return json(
+      req,
+      { ok: false, error: "Security event storage is unavailable", storage: storageMode },
+      { status: 503 }
+    );
+  }
 
   writeAuditEvent({
     type: "admin.action",
@@ -219,7 +284,9 @@ export async function DELETE(req: NextRequest) {
   return json(req, {
     ok: true,
     events: [],
-    summary: getSecurityEventSummary(),
+    summary: getSecurityEventSummary([], storageMode),
+    storage: storageMode,
+    workspaces: FRONTGUARD_WORKSPACES,
   });
 }
 

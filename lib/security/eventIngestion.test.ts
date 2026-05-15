@@ -9,6 +9,8 @@ import {
 } from "./eventIngestion";
 
 const validEnvelope = {
+  orgId: "frontguard-labs",
+  projectId: "playground",
   appId: "frontguard-playground",
   environment: "preview",
   release: "suite-v2-demo",
@@ -35,6 +37,8 @@ describe("validateSecurityEventEnvelope", () => {
     if (!result.ok) throw new Error(result.errors.join(", "));
 
     expect(result.data).toMatchObject({
+      orgId: "frontguard-labs",
+      projectId: "playground",
       appId: "frontguard-playground",
       environment: "preview",
       release: "suite-v2-demo",
@@ -95,15 +99,15 @@ describe("validateSecurityEventEnvelope", () => {
 });
 
 describe("security event store", () => {
-  beforeEach(() => {
-    clearSecurityEvents();
+  beforeEach(async () => {
+    await clearSecurityEvents();
   });
 
-  it("ingests events with request context and returns a summary", () => {
+  it("ingests events with request context and returns a summary", async () => {
     const result = validateSecurityEventEnvelope(validEnvelope);
     if (!result.ok) throw new Error(result.errors.join(", "));
 
-    const ingested = ingestSecurityEventEnvelope(result.data, {
+    const ingested = await ingestSecurityEventEnvelope(result.data, {
       requestId: "req_123",
       sourceIp: "203.0.113.10",
       userAgent: "Playwright",
@@ -111,15 +115,20 @@ describe("security event store", () => {
 
     expect(ingested).toHaveLength(1);
     expect(ingested[0]).toMatchObject({
+      orgId: "frontguard-labs",
+      projectId: "playground",
       appId: "frontguard-playground",
       requestId: "req_123",
       sourceIp: "203.0.113.10",
       severity: "critical",
     });
 
-    expect(getSecurityEventSummary()).toMatchObject({
+    expect(getSecurityEventSummary(await getSecurityEvents())).toMatchObject({
       total: 1,
+      orgs: 1,
+      projects: 1,
       apps: 1,
+      storageMode: "memory",
       bySeverity: { low: 0, medium: 0, high: 0, critical: 1 },
       byType: {
         "dom.script-injected": 1,
@@ -129,7 +138,7 @@ describe("security event store", () => {
     });
   });
 
-  it("filters events by severity and resolves highest severity", () => {
+  it("filters events by workspace, project, severity, and resolves highest severity", async () => {
     const result = validateSecurityEventEnvelope({
       appId: "frontguard-playground",
       environment: "preview",
@@ -152,13 +161,15 @@ describe("security event store", () => {
     });
     if (!result.ok) throw new Error(result.errors.join(", "));
 
-    const ingested = ingestSecurityEventEnvelope(result.data, {
+    const ingested = await ingestSecurityEventEnvelope(result.data, {
       requestId: "req_456",
       sourceIp: "203.0.113.11",
       userAgent: "Vitest",
     });
 
-    expect(getSecurityEvents({ severity: "high" })).toHaveLength(1);
+    expect(await getSecurityEvents({ orgId: "frontguard-labs" })).toHaveLength(2);
+    expect(await getSecurityEvents({ projectId: "playground" })).toHaveLength(2);
+    expect(await getSecurityEvents({ severity: "high" })).toHaveLength(1);
     expect(getHighestSeverity(ingested)).toBe("high");
   });
 });

@@ -59,10 +59,12 @@ interface SecurityEvent {
 }
 ```
 
-The current prototype accepts these events at `POST /api/security-events` inside an app-level envelope. The hosted `frontguard-agent` demo is allowlisted to submit browser telemetry through CORS, while local playground requests continue to work same-origin:
+The current prototype accepts these events at `POST /api/security-events` inside a workspace-scoped envelope. The hosted `frontguard-agent` demo is allowlisted to submit browser telemetry through CORS, while local playground requests continue to work same-origin:
 
 ```ts
 interface FrontGuardEventEnvelope {
+  orgId?: string;
+  projectId?: string;
   appId: string;
   environment: 'production' | 'preview' | 'development';
   release?: string;
@@ -72,7 +74,7 @@ interface FrontGuardEventEnvelope {
 }
 ```
 
-That boundary keeps the browser package privacy-aware and transport-agnostic while letting the SaaS layer handle tenancy, retention, analytics, alerting, and access control. The prototype stores recent events in memory; a production version would replace that store with Postgres, Redis streams, or a dedicated event pipeline.
+That boundary keeps the browser package privacy-aware and transport-agnostic while letting the SaaS layer handle tenancy, retention, analytics, alerting, and access control. The prototype stores recent events in memory for local development and uses Redis REST when `FRONTGUARD_REDIS_REST_URL` and `FRONTGUARD_REDIS_REST_TOKEN` are present. It also honors Vercel/Upstash `KV_REST_API_*` and `UPSTASH_REDIS_REST_*` aliases. `FRONTGUARD_EVENT_STORE_KEY` can isolate environments that share the same Redis database.
 
 For local or alternate hosted demos, set `FRONTGUARD_EVENT_ORIGINS` to a comma-separated list of trusted origins that may POST event envelopes.
 

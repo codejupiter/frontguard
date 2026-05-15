@@ -46,7 +46,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   await connection();
 
   return (
-    <html lang="en" className={`${jetBrainsMono.variable} ${syne.variable}`}>
+    <html
+      lang="en"
+      data-scroll-behavior="smooth"
+      className={`${jetBrainsMono.variable} ${syne.variable}`}
+    >
       <body
         className="bg-[#080810] text-white antialiased"
         style={{ fontFamily: "var(--font-mono)" }}

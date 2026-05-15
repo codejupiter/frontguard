@@ -49,7 +49,13 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
       {/* Logo */}
       <div className="px-5 py-4 border-b border-[#1a1a2e] flex items-center justify-between">
         <Link href="/" className="block">
-          <Image src="/logo.svg" alt="FrontGuard" width={140} height={36} priority className="w-36 h-auto" />
+          <Image
+            src="/logo.svg"
+            alt="FrontGuard"
+            width={140}
+            height={36}
+            priority
+          />
         </Link>
         {/* Close button — mobile only */}
         <button
