@@ -128,6 +128,8 @@ Demonstrates raising purchase limits by editing HTML attributes, unlocking premi
 
 The hosted [FrontGuard Agent demo](https://frontguard-agent.vercel.app/) can submit runtime events into `/api/security-events`. The route only allows same-origin requests plus trusted demo origins; add more origins with `FRONTGUARD_EVENT_ORIGINS` when testing alternate deployments. Event storage uses the in-process demo adapter by default and switches to Redis REST when `FRONTGUARD_REDIS_REST_URL` plus `FRONTGUARD_REDIS_REST_TOKEN` are configured.
 
+Use `.env.example` for the optional CORS and Redis persistence variables.
+
 ---
 
 ## Quality Gates
