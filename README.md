@@ -4,12 +4,13 @@
 
 > **🛡️ Companion project:** [**frontguard-agent**](https://github.com/codejupiter/frontguard-agent) ([live demo](https://frontguard-agent.vercel.app/)) — the runtime detection counterpart to this educational playground. Where the playground teaches you *what* the vulnerabilities are, the agent is what you ship to *detect them* in production.
 
-**Local landing page:** `/landing` · **Local app:** `/`
+**Live app:** [frontguard-nine.vercel.app](https://frontguard-nine.vercel.app) · **Local landing page:** `/landing` · **Local app:** `/`
 
 ---
 
 ## Documentation
 
+- [FrontGuard Suite](./docs/FRONTGUARD_SUITE.md) — ecosystem narrative connecting the playground, runtime agent, future event ingestion, and dashboard roadmap.
 - [Architecture](./docs/ARCHITECTURE.md) — product boundary, request flow, module architecture, CSP design, state model, production hardening path, and interview talking points.
 - [Deployment](./DEPLOY.md) — Vercel/Netlify deployment guide.
 
@@ -171,6 +172,9 @@ securitysystemapp/
 ├── lib/
 │   ├── store/SecurityContext.tsx  # Global state: mode, logs, current user
 │   └── security/utils.ts          # sanitize, rateLimit, JWT, RBAC helpers
+├── docs/
+│   ├── ARCHITECTURE.md            # System design and security model
+│   └── FRONTGUARD_SUITE.md        # Playground + agent product ecosystem
 ├── types/index.ts
 ├── proxy.ts                    # CSP nonce, request IDs, bot blocking, rate limits
 ├── vercel.json                 # Vercel deployment + security headers

@@ -14,7 +14,7 @@ The app is not a scanner and it is not a production identity provider. It is an 
 - Unit tests for security utilities.
 - Playwright smoke tests for the highest-risk flows.
 
-The companion package, `frontguard-agent`, is the runtime detection story. This app is the teaching and demonstration layer.
+The companion package, `frontguard-agent`, is the runtime detection story. This app is the teaching and demonstration layer. The broader ecosystem narrative lives in [FrontGuard Suite](./FRONTGUARD_SUITE.md).
 
 ## Request Flow
 
@@ -113,6 +113,8 @@ If FrontGuard became a real security education SaaS platform, the next backend l
 - Real CSP report ingestion.
 - Admin dashboard for vulnerable-pattern analytics.
 
+The suite roadmap expands this into event ingestion, triage dashboards, organization workflows, and a clean contract between the browser package and the SaaS backend.
+
 ## Interview Talking Points
 
 - Why the app intentionally contains unsafe code paths and how they are isolated.
@@ -121,3 +123,4 @@ If FrontGuard became a real security education SaaS platform, the next backend l
 - Why demo tokens are marked as mock behavior.
 - How rate limiting differs between playground state and production enforcement.
 - How the companion `frontguard-agent` completes the education-to-detection story.
+- How a future ingestion API would consume agent events without coupling the browser package to one backend.
