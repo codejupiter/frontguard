@@ -111,6 +111,20 @@ test("security event dashboard ingests a FrontGuard Agent event", async ({
   page,
 }, testInfo) => {
   const appId = `frontguard-smoke-${testInfo.project.name}-${Date.now()}`;
+  const preflight = await page.request.fetch("/api/security-events", {
+    method: "OPTIONS",
+    headers: {
+      Origin: "https://frontguard-agent.vercel.app",
+      "Access-Control-Request-Method": "POST",
+      "Access-Control-Request-Headers": "content-type",
+    },
+  });
+
+  expect(preflight.status()).toBe(204);
+  expect(preflight.headers()["access-control-allow-origin"]).toBe(
+    "https://frontguard-agent.vercel.app",
+  );
+
   await gotoSettled(page, `/security-events?appId=${encodeURIComponent(appId)}`);
 
   await expect(

@@ -16,10 +16,89 @@ import {
 
 export const dynamic = "force-dynamic";
 
-function json(data: unknown, init?: ResponseInit) {
+const DEFAULT_ALLOWED_EVENT_ORIGINS = [
+  "https://frontguard-agent.vercel.app",
+  "http://localhost:3000",
+  "http://localhost:4173",
+  "http://localhost:5173",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:4173",
+  "http://127.0.0.1:5173",
+];
+
+function configuredAllowedOrigins(req: NextRequest): Set<string> {
+  const configured = process.env.FRONTGUARD_EVENT_ORIGINS
+    ?.split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean) ?? [];
+
+  return new Set([
+    req.nextUrl.origin,
+    ...DEFAULT_ALLOWED_EVENT_ORIGINS,
+    ...configured,
+  ]);
+}
+
+function normalizeOrigin(origin: string): string | null {
+  try {
+    return new URL(origin).origin;
+  } catch {
+    return null;
+  }
+}
+
+function isLocalDevOrigin(origin: string): boolean {
+  try {
+    const { hostname } = new URL(origin);
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+  } catch {
+    return false;
+  }
+}
+
+function allowedCorsOrigin(req: NextRequest): string | null | undefined {
+  const origin = req.headers.get("origin");
+  if (!origin) return undefined;
+
+  const normalizedOrigin = normalizeOrigin(origin);
+  if (!normalizedOrigin) return null;
+  if (isLocalDevOrigin(normalizedOrigin)) return normalizedOrigin;
+
+  return configuredAllowedOrigins(req).has(normalizedOrigin)
+    ? normalizedOrigin
+    : null;
+}
+
+function responseHeaders(req: NextRequest, init?: ResponseInit): Headers {
   const headers = new Headers(init?.headers);
+  const corsOrigin = allowedCorsOrigin(req);
+
   headers.set("cache-control", "no-store");
+  headers.set("vary", "Origin");
+
+  if (corsOrigin) {
+    headers.set("access-control-allow-origin", corsOrigin);
+    headers.set("access-control-allow-methods", "GET,POST,DELETE,OPTIONS");
+    headers.set("access-control-allow-headers", "content-type");
+    headers.set("access-control-max-age", "600");
+  }
+
+  return headers;
+}
+
+function json(req: NextRequest, data: unknown, init?: ResponseInit) {
+  const headers = responseHeaders(req, init);
   return NextResponse.json(data, { ...init, headers });
+}
+
+function forbiddenOriginResponse(req: NextRequest): NextResponse | null {
+  if (allowedCorsOrigin(req) !== null) return null;
+
+  return json(
+    req,
+    { ok: false, error: "Origin is not allowed to submit security events" },
+    { status: 403 }
+  );
 }
 
 function readLimit(req: NextRequest): number {
@@ -50,7 +129,7 @@ export async function GET(req: NextRequest) {
     limit: readLimit(req),
   });
 
-  return json({
+  return json(req, {
     ok: true,
     events,
     summary: getSecurityEventSummary(events),
@@ -58,6 +137,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const forbidden = forbiddenOriginResponse(req);
+  if (forbidden) return forbidden;
+
   const ctx = buildEventContext(req);
   const body = await safeParseBody(req, 20_000);
 
@@ -69,7 +151,7 @@ export async function POST(req: NextRequest) {
       detail: { endpoint: "/api/security-events", reason: body.error },
     });
 
-    return json({ ok: false, error: body.error }, { status: 400 });
+    return json(req, { ok: false, error: body.error }, { status: 400 });
   }
 
   const validated = validateSecurityEventEnvelope(body.data);
@@ -85,7 +167,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return json({ ok: false, errors: validated.errors }, { status: 400 });
+    return json(req, { ok: false, errors: validated.errors }, { status: 400 });
   }
 
   const ingested = ingestSecurityEventEnvelope(validated.data, {
@@ -109,6 +191,7 @@ export async function POST(req: NextRequest) {
   });
 
   return json(
+    req,
     {
       ok: true,
       accepted: ingested.length,
@@ -120,6 +203,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const forbidden = forbiddenOriginResponse(req);
+  if (forbidden) return forbidden;
+
   const ctx = buildEventContext(req);
   clearSecurityEvents();
 
@@ -130,9 +216,19 @@ export async function DELETE(req: NextRequest) {
     detail: { action: "clear_security_event_demo_store" },
   });
 
-  return json({
+  return json(req, {
     ok: true,
     events: [],
     summary: getSecurityEventSummary(),
+  });
+}
+
+export async function OPTIONS(req: NextRequest) {
+  const forbidden = forbiddenOriginResponse(req);
+  if (forbidden) return forbidden;
+
+  return new NextResponse(null, {
+    status: 204,
+    headers: responseHeaders(req),
   });
 }

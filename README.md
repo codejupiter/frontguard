@@ -126,6 +126,8 @@ Demonstrates raising purchase limits by editing HTML attributes, unlocking premi
 | **Telemetry** | Typed event envelope, ingestion route, in-memory demo event store |
 | **Deploy** | Vercel (zero config) |
 
+The hosted [FrontGuard Agent demo](https://frontguard-agent.vercel.app/) can submit runtime events into `/api/security-events`. The route only allows same-origin requests plus trusted demo origins; add more origins with `FRONTGUARD_EVENT_ORIGINS` when testing alternate deployments.
+
 ---
 
 ## Quality Gates
