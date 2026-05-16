@@ -15,7 +15,7 @@ The app is not a scanner and it is not a production identity provider. It is an 
 - Unit tests for security utilities.
 - Playwright smoke tests for the highest-risk flows.
 
-The companion package, `frontguard-agent`, is the runtime detection story. This app is the teaching and demonstration layer. The broader ecosystem narrative lives in [FrontGuard Suite](./FRONTGUARD_SUITE.md).
+The companion package, `frontguard-agent`, is the runtime detection story. This app is the teaching and demonstration layer. The broader ecosystem narrative lives in [FrontGuard Suite](./FRONTGUARD_SUITE.md). The event ingestion, RBAC, storage, and alerting case study lives in [Security Event Architecture](./SECURITY_EVENT_ARCHITECTURE.md).
 
 ## Request Flow
 
@@ -51,6 +51,8 @@ Shared UI lives under `components/`:
 - `OnboardingModal` makes the first-run experience guided without changing the module logic.
 
 The `/security-events` route is the first FrontGuard Suite v2 surface. It consumes the same event envelope described in `frontguard-agent`, calls `POST /api/security-events`, resolves org/project metadata, and presents recent findings as a project-scoped triage queue.
+
+For a deeper breakdown of the request flow, policy boundaries, storage adapters, alert behavior, tradeoffs, and interview talking points, see [Security Event Architecture](./SECURITY_EVENT_ARCHITECTURE.md).
 
 ## Security Utilities
 

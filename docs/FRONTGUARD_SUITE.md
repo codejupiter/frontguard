@@ -28,6 +28,7 @@ That makes the suite useful as a portfolio product because it demonstrates produ
 - Agent demo: [frontguard-agent.vercel.app](https://frontguard-agent.vercel.app)
 - Event triage prototype: `/security-events`
 - Agent demo telemetry stream: `/security-events?orgId=frontguard-labs&projectId=agent-demo&appId=frontguard-agent-demo`
+- Security event case study: [Security Event Architecture](./SECURITY_EVENT_ARCHITECTURE.md)
 
 ## Architecture Direction
 

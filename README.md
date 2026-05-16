@@ -12,6 +12,7 @@
 
 - [FrontGuard Suite](./docs/FRONTGUARD_SUITE.md) — ecosystem narrative connecting the playground, runtime agent, future event ingestion, and dashboard roadmap.
 - [Architecture](./docs/ARCHITECTURE.md) — product boundary, request flow, module architecture, CSP design, state model, production hardening path, and interview talking points.
+- [Security Event Architecture](./docs/SECURITY_EVENT_ARCHITECTURE.md) — case-study style breakdown of the event ingestion, project RBAC, Redis storage, alerting, tradeoffs, and interview positioning.
 - [Deployment](./DEPLOY.md) — Vercel/Netlify deployment guide.
 
 ---
@@ -181,7 +182,8 @@ securitysystemapp/
 │   └── security/                  # sanitize, rateLimit, JWT, RBAC, event ingestion
 ├── docs/
 │   ├── ARCHITECTURE.md            # System design and security model
-│   └── FRONTGUARD_SUITE.md        # Playground + agent product ecosystem
+│   ├── FRONTGUARD_SUITE.md        # Playground + agent product ecosystem
+│   └── SECURITY_EVENT_ARCHITECTURE.md # Event ingestion case study
 ├── types/index.ts
 ├── proxy.ts                    # CSP nonce, request IDs, bot blocking, rate limits
 ├── vercel.json                 # Vercel deployment + security headers
