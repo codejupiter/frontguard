@@ -77,6 +77,12 @@ export interface SecurityEventSummary {
   byType: Record<SecurityEventType, number>;
 }
 
+export interface SecurityEventRetentionPolicy {
+  maxStoredEvents: number;
+  retentionDays: number | null;
+  retentionSeconds: number | null;
+}
+
 export interface SecurityEventFilters {
   orgId?: string;
   projectId?: string;
@@ -129,7 +135,8 @@ type UpstashResponse<T> = {
 };
 
 const MAX_EVENTS_PER_ENVELOPE = 25;
-const MAX_STORED_EVENTS = 500;
+const DEFAULT_MAX_STORED_EVENTS = 500;
+const DEFAULT_RETENTION_DAYS = 14;
 const MAX_DETAIL_KEYS = 20;
 const MAX_ARRAY_VALUES = 10;
 const MAX_DETAIL_DEPTH = 2;
@@ -332,13 +339,60 @@ function clampLimit(limit: number | undefined): number {
   return Math.min(Math.max(Math.floor(limit ?? 50), 1), 200);
 }
 
+function readNumberEnv(
+  value: string | undefined,
+  fallback: number,
+  min: number,
+  max: number
+): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(Math.max(Math.floor(parsed), min), max);
+}
+
+export function getSecurityEventRetentionPolicy(
+  env: Record<string, string | undefined> = process.env
+): SecurityEventRetentionPolicy {
+  const maxStoredEvents = readNumberEnv(
+    env.FRONTGUARD_EVENT_MAX_EVENTS,
+    DEFAULT_MAX_STORED_EVENTS,
+    50,
+    10_000
+  );
+  const retentionDays = readNumberEnv(
+    env.FRONTGUARD_EVENT_RETENTION_DAYS,
+    DEFAULT_RETENTION_DAYS,
+    0,
+    365
+  );
+
+  return {
+    maxStoredEvents,
+    retentionDays: retentionDays === 0 ? null : retentionDays,
+    retentionSeconds: retentionDays === 0 ? null : retentionDays * 24 * 60 * 60,
+  };
+}
+
+function isWithinRetention(
+  event: IngestedSecurityEvent,
+  policy: SecurityEventRetentionPolicy,
+  now = Date.now()
+): boolean {
+  if (policy.retentionDays === null) return true;
+  const receivedAt = Date.parse(event.receivedAt);
+  if (!Number.isFinite(receivedAt)) return false;
+  return receivedAt >= now - policy.retentionDays * 24 * 60 * 60 * 1000;
+}
+
 function filterSecurityEvents(
   events: readonly IngestedSecurityEvent[],
   filters: SecurityEventFilters = {}
 ): IngestedSecurityEvent[] {
   const limit = clampLimit(filters.limit);
+  const policy = getSecurityEventRetentionPolicy();
 
   return events
+    .filter((event) => isWithinRetention(event, policy))
     .filter((event) => !filters.orgId || event.orgId === filters.orgId)
     .filter((event) => !filters.projectId || event.projectId === filters.projectId)
     .filter((event) => !filters.appId || event.appId === filters.appId)
@@ -376,9 +430,14 @@ function getMemoryEventStore(): EventStorageAdapter {
   return {
     mode: "memory",
     async save(events) {
+      const policy = getSecurityEventRetentionPolicy();
       inMemoryEventStore.unshift(...events);
-      if (inMemoryEventStore.length > MAX_STORED_EVENTS) {
-        inMemoryEventStore.length = MAX_STORED_EVENTS;
+      const retained = inMemoryEventStore.filter((event) =>
+        isWithinRetention(event, policy)
+      );
+      inMemoryEventStore.splice(0, inMemoryEventStore.length, ...retained);
+      if (inMemoryEventStore.length > policy.maxStoredEvents) {
+        inMemoryEventStore.length = policy.maxStoredEvents;
       }
     },
     async list(filters) {
@@ -463,18 +522,23 @@ function getRedisEventStore(config: RedisConfig): EventStorageAdapter {
     mode: "redis",
     async save(events) {
       if (events.length === 0) return;
+      const policy = getSecurityEventRetentionPolicy();
 
       await redisPipeline(config, [
         ...events.map((event) => ["LPUSH", config.key, JSON.stringify(event)]),
-        ["LTRIM", config.key, 0, MAX_STORED_EVENTS - 1],
+        ["LTRIM", config.key, 0, policy.maxStoredEvents - 1],
+        ...(policy.retentionSeconds
+          ? [["EXPIRE", config.key, policy.retentionSeconds]]
+          : []),
       ]);
     },
     async list(filters) {
+      const policy = getSecurityEventRetentionPolicy();
       const stored = await redisCommand<string[]>(config, [
         "LRANGE",
         config.key,
         0,
-        MAX_STORED_EVENTS - 1,
+        policy.maxStoredEvents - 1,
       ]);
 
       return filterSecurityEvents(

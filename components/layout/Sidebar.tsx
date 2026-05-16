@@ -52,7 +52,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           <Image
             src="/logo.svg"
             alt="FrontGuard"
-            width={140}
+            width={144}
             height={36}
             priority
           />

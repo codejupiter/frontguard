@@ -4,6 +4,7 @@ import {
   getHighestSeverity,
   getSecurityEvents,
   getSecurityEventSummary,
+  getSecurityEventRetentionPolicy,
   ingestSecurityEventEnvelope,
   validateSecurityEventEnvelope,
 } from "./eventIngestion";
@@ -171,5 +172,29 @@ describe("security event store", () => {
     expect(await getSecurityEvents({ projectId: "playground" })).toHaveLength(2);
     expect(await getSecurityEvents({ severity: "high" })).toHaveLength(1);
     expect(getHighestSeverity(ingested)).toBe("high");
+  });
+
+  it("reads bounded retention policy from environment values", () => {
+    expect(
+      getSecurityEventRetentionPolicy({
+        FRONTGUARD_EVENT_MAX_EVENTS: "1200",
+        FRONTGUARD_EVENT_RETENTION_DAYS: "30",
+      })
+    ).toEqual({
+      maxStoredEvents: 1200,
+      retentionDays: 30,
+      retentionSeconds: 30 * 24 * 60 * 60,
+    });
+
+    expect(
+      getSecurityEventRetentionPolicy({
+        FRONTGUARD_EVENT_MAX_EVENTS: "999999",
+        FRONTGUARD_EVENT_RETENTION_DAYS: "0",
+      })
+    ).toMatchObject({
+      maxStoredEvents: 10000,
+      retentionDays: null,
+      retentionSeconds: null,
+    });
   });
 });

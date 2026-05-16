@@ -61,9 +61,9 @@ The `/security-events` route is the first FrontGuard Suite v2 surface. It consum
 - Role permission checks.
 - In-memory rate limiting.
 - Audit event creation and event context.
-- FrontGuard Agent event-envelope validation, sanitization, memory/Redis REST storage, summary stats, and workspace filtering.
+- FrontGuard Agent event-envelope validation, sanitization, optional scoped write-token authorization, memory/Redis REST storage, retention policy, summary stats, and workspace filtering.
 
-The tokens and rate limits are intentionally simple because the app is a playground. The documentation and UI call out where a real product would use signed JWT/session cookies, Redis-backed rate limits, durable audit storage, and a real identity provider.
+The tokens and rate limits are intentionally simple because the app is a playground. The event ingestion path is shaped like a SaaS boundary: CORS allowlisting, optional scoped write tokens, optional admin token for clearing streams, Redis-backed retention, and audit logging. The documentation and UI call out where a real product would add signed JWT/session cookies, project RBAC, durable audit storage, and a real identity provider.
 
 ## CSP Design
 
@@ -131,4 +131,4 @@ The suite roadmap expands this into event ingestion, triage dashboards, organiza
 - How rate limiting differs between playground state and production enforcement.
 - How the companion `frontguard-agent` completes the education-to-detection story.
 - How a future ingestion API would consume agent events without coupling the browser package to one backend.
-- Why the event store defaults to memory locally, how the Redis REST adapter changes persistence behavior, and where a production database or stream boundary would live.
+- Why the event store defaults to memory locally, how the Redis REST adapter changes persistence behavior, how write-token scopes and retention policies work, and where a production database or stream boundary would live.

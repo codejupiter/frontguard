@@ -27,7 +27,7 @@ That makes the suite useful as a portfolio product because it demonstrates produ
 - Playground: [frontguard-nine.vercel.app](https://frontguard-nine.vercel.app)
 - Agent demo: [frontguard-agent.vercel.app](https://frontguard-agent.vercel.app)
 - Event triage prototype: `/security-events`
-- Agent demo telemetry stream: `/security-events?appId=frontguard-agent-demo`
+- Agent demo telemetry stream: `/security-events?orgId=frontguard-labs&projectId=agent-demo&appId=frontguard-agent-demo`
 
 ## Architecture Direction
 
@@ -74,7 +74,9 @@ interface FrontGuardEventEnvelope {
 }
 ```
 
-That boundary keeps the browser package privacy-aware and transport-agnostic while letting the SaaS layer handle tenancy, retention, analytics, alerting, and access control. The prototype stores recent events in memory for local development and uses Redis REST when `FRONTGUARD_REDIS_REST_URL` and `FRONTGUARD_REDIS_REST_TOKEN` are present. It also honors Vercel/Upstash `KV_REST_API_*` and `UPSTASH_REDIS_REST_*` aliases. `FRONTGUARD_EVENT_STORE_KEY` can isolate environments that share the same Redis database.
+That boundary keeps the browser package privacy-aware and transport-agnostic while letting the SaaS layer handle tenancy, retention, analytics, alerting, and access control. The prototype stores recent events in memory for local development and uses Redis REST when Vercel/Upstash `KV_REST_API_*`, `UPSTASH_REDIS_REST_*`, or `FRONTGUARD_REDIS_REST_*` credentials are present. `FRONTGUARD_EVENT_STORE_KEY` can isolate environments that share the same Redis database, while `FRONTGUARD_EVENT_MAX_EVENTS` and `FRONTGUARD_EVENT_RETENTION_DAYS` bound storage growth.
+
+`POST /api/security-events` remains open to trusted demo origins until `FRONTGUARD_EVENT_WRITE_TOKENS` is configured. When configured, callers must send `Authorization: Bearer <token>` or `x-frontguard-event-token`. Token scopes use `*=token`, `org=token`, `org/project=token`, or `org/project/app=token`. `DELETE /api/security-events` can be protected separately with `FRONTGUARD_ADMIN_TOKEN`.
 
 For local or alternate hosted demos, set `FRONTGUARD_EVENT_ORIGINS` to a comma-separated list of trusted origins that may POST event envelopes.
 

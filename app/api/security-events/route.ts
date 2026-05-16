@@ -2,11 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { buildEventContext, writeAuditEvent } from "@/lib/security/auditLog";
 import { safeParseBody, sanitizeString } from "@/lib/security/sanitize";
 import {
+  authorizeAdminAction,
+  authorizeEventWrite,
+  getEventWriteAuthSummary,
+  readAdminToken,
+  readEventWriteToken,
+} from "@/lib/security/eventWriteAuth";
+import {
   clearSecurityEvents,
   FRONTGUARD_WORKSPACES,
   getHighestSeverity,
   getSecurityEvents,
   getSecurityEventSummary,
+  getSecurityEventRetentionPolicy,
   getSecurityEventStorageMode,
   ingestSecurityEventEnvelope,
   SECURITY_EVENT_SEVERITIES,
@@ -81,7 +89,10 @@ function responseHeaders(req: NextRequest, init?: ResponseInit): Headers {
   if (corsOrigin) {
     headers.set("access-control-allow-origin", corsOrigin);
     headers.set("access-control-allow-methods", "GET,POST,DELETE,OPTIONS");
-    headers.set("access-control-allow-headers", "content-type");
+    headers.set(
+      "access-control-allow-headers",
+      "authorization, content-type, x-frontguard-admin-token, x-frontguard-event-token"
+    );
     headers.set("access-control-max-age", "600");
   }
 
@@ -145,6 +156,8 @@ export async function GET(req: NextRequest) {
       events,
       summary: getSecurityEventSummary(events, storageMode),
       storage: storageMode,
+      policy: getSecurityEventRetentionPolicy(),
+      auth: getEventWriteAuthSummary(),
       workspaces: FRONTGUARD_WORKSPACES,
     });
   } catch {
@@ -195,6 +208,24 @@ export async function POST(req: NextRequest) {
   }
 
   const storageMode = getSecurityEventStorageMode();
+  const auth = authorizeEventWrite(validated.data, readEventWriteToken(req.headers));
+  if (!auth.ok) {
+    writeAuditEvent({
+      type: auth.status === 401 ? "api.unauthorized" : "api.forbidden",
+      ...ctx,
+      severity: "high",
+      detail: {
+        endpoint: "/api/security-events",
+        appId: validated.data.appId,
+        orgId: validated.data.orgId,
+        projectId: validated.data.projectId,
+        reason: auth.reason,
+      },
+    });
+
+    return json(req, { ok: false, error: auth.reason }, { status: auth.status });
+  }
+
   let ingested: Awaited<ReturnType<typeof ingestSecurityEventEnvelope>>;
 
   try {
@@ -233,6 +264,8 @@ export async function POST(req: NextRequest) {
       environment: validated.data.environment,
       count: ingested.length,
       highestSeverity: severity,
+      authMode: auth.mode,
+      authScope: auth.scope,
     },
   });
 
@@ -251,6 +284,8 @@ export async function POST(req: NextRequest) {
       events: ingested,
       summary: getSecurityEventSummary(summaryEvents, storageMode),
       storage: storageMode,
+      policy: getSecurityEventRetentionPolicy(),
+      auth: getEventWriteAuthSummary(),
       workspaces: FRONTGUARD_WORKSPACES,
     },
     { status: 202 }
@@ -263,6 +298,21 @@ export async function DELETE(req: NextRequest) {
 
   const ctx = buildEventContext(req);
   const storageMode = getSecurityEventStorageMode();
+  const auth = authorizeAdminAction(readAdminToken(req.headers));
+  if (!auth.ok) {
+    writeAuditEvent({
+      type: auth.status === 401 ? "api.unauthorized" : "api.forbidden",
+      ...ctx,
+      severity: "high",
+      detail: {
+        endpoint: "/api/security-events",
+        action: "clear_security_event_store",
+        reason: auth.reason,
+      },
+    });
+
+    return json(req, { ok: false, error: auth.reason }, { status: auth.status });
+  }
 
   try {
     await clearSecurityEvents();
@@ -278,7 +328,11 @@ export async function DELETE(req: NextRequest) {
     type: "admin.action",
     ...ctx,
     severity: "low",
-    detail: { action: "clear_security_event_demo_store" },
+    detail: {
+      action: "clear_security_event_store",
+      authMode: auth.mode,
+      authScope: auth.scope,
+    },
   });
 
   return json(req, {
@@ -286,6 +340,8 @@ export async function DELETE(req: NextRequest) {
     events: [],
     summary: getSecurityEventSummary([], storageMode),
     storage: storageMode,
+    policy: getSecurityEventRetentionPolicy(),
+    auth: getEventWriteAuthSummary(),
     workspaces: FRONTGUARD_WORKSPACES,
   });
 }

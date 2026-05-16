@@ -70,11 +70,25 @@ interface FrontGuardWorkspace {
   projects: FrontGuardWorkspaceProject[];
 }
 
+interface EventPolicy {
+  maxStoredEvents: number;
+  retentionDays: number | null;
+  retentionSeconds: number | null;
+}
+
+interface EventAuthSummary {
+  mode: "open-demo" | "token";
+  tokenScopes: string[];
+  adminMode: "open-demo" | "token";
+}
+
 interface EventsResponse {
   ok: boolean;
   events: IngestedSecurityEvent[];
   summary: EventSummary;
   storage: SecurityEventStorageMode;
+  policy: EventPolicy;
+  auth: EventAuthSummary;
   workspaces: FrontGuardWorkspace[];
 }
 
@@ -131,6 +145,18 @@ const emptySummary: EventSummary = {
     "dom.iframe-injected": 0,
     "dom.suspicious-attribute": 0,
   },
+};
+
+const emptyPolicy: EventPolicy = {
+  maxStoredEvents: 500,
+  retentionDays: 14,
+  retentionSeconds: 14 * 24 * 60 * 60,
+};
+
+const emptyAuth: EventAuthSummary = {
+  mode: "open-demo",
+  tokenScopes: [],
+  adminMode: "open-demo",
 };
 
 interface WorkspaceFilters {
@@ -195,6 +221,12 @@ function detailPreview(details: Record<string, unknown>): string {
   return JSON.stringify(details).slice(0, 120);
 }
 
+function retentionLabel(policy: EventPolicy): string {
+  return policy.retentionDays === null
+    ? `${policy.maxStoredEvents} events`
+    : `${policy.retentionDays}d / ${policy.maxStoredEvents} events`;
+}
+
 async function fetchSecurityEvents(
   severityFilter: SecurityEventSeverity | "all",
   filters: WorkspaceFilters
@@ -223,6 +255,8 @@ export default function SecurityEventsPage() {
   const [draftFilters, setDraftFilters] = useState(readInitialWorkspaceFilters);
   const [queryFilters, setQueryFilters] = useState(readInitialWorkspaceFilters);
   const [workspaces, setWorkspaces] = useState<FrontGuardWorkspace[]>([]);
+  const [policy, setPolicy] = useState<EventPolicy>(emptyPolicy);
+  const [auth, setAuth] = useState<EventAuthSummary>(emptyAuth);
 
   async function loadEvents(
     filters = queryFilters,
@@ -236,6 +270,8 @@ export default function SecurityEventsPage() {
       setEvents(data.events);
       setSummary(data.summary);
       setWorkspaces(data.workspaces ?? []);
+      setPolicy(data.policy ?? emptyPolicy);
+      setAuth(data.auth ?? emptyAuth);
     } catch {
       setError("Security event stream is unavailable.");
     } finally {
@@ -253,6 +289,8 @@ export default function SecurityEventsPage() {
         setEvents(data.events);
         setSummary(data.summary);
         setWorkspaces(data.workspaces ?? []);
+        setPolicy(data.policy ?? emptyPolicy);
+        setAuth(data.auth ?? emptyAuth);
         setError(null);
       })
       .catch(() => {
@@ -625,11 +663,33 @@ export default function SecurityEventsPage() {
             </div>
           </div>
 
+          <div className="border border-cyan-500/20 bg-cyan-950/5 rounded-xl p-4">
+            <p className="text-sm font-bold text-white font-mono mb-3">Access & Retention</p>
+            <div className="space-y-2 text-xs font-mono">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-zinc-500">Writes</span>
+                <span className={auth.mode === "token" ? "text-emerald-300" : "text-yellow-300"}>
+                  {auth.mode === "token" ? "token scoped" : "demo open"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-zinc-500">Admin</span>
+                <span className={auth.adminMode === "token" ? "text-emerald-300" : "text-yellow-300"}>
+                  {auth.adminMode === "token" ? "token required" : "demo open"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-zinc-500">Retention</span>
+                <span className="text-cyan-200">{retentionLabel(policy)}</span>
+              </div>
+            </div>
+          </div>
+
           <div className="border border-blue-500/20 bg-blue-950/5 rounded-xl p-4">
             <p className="text-sm font-bold text-white font-mono mb-2">Production Path</p>
             <p className="text-xs text-zinc-500 leading-relaxed">
-              Redis REST activates when storage credentials are present. Next layers:
-              app-scoped write tokens, retention policies, project RBAC, and critical alerts.
+              Redis REST activates when storage credentials are present. Write tokens and retention are
+              environment-driven; next layers are project RBAC and critical alerts.
             </p>
           </div>
         </aside>
