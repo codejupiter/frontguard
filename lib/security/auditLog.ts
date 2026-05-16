@@ -19,6 +19,8 @@ export type AuditEventType =
   | "input.validation_failure"
   | "admin.action"
   | "security.csp_violation"
+  | "security.alert_failed"
+  | "security.alert_triggered"
   | "security.agent_event"
   | "security.storage_error"
   | "security.scan_detected"

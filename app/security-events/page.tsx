@@ -82,6 +82,18 @@ interface EventAuthSummary {
   adminMode: "open-demo" | "token";
 }
 
+interface ProjectAccessSummary {
+  mode: "open-demo" | "token";
+  tokenScopes: { scope: string; role: "viewer" | "triager" | "admin" }[];
+}
+
+interface AlertingPolicy {
+  mode: "audit-only" | "webhook";
+  minSeverity: SecurityEventSeverity;
+  webhookConfigured: boolean;
+  timeoutMs: number;
+}
+
 interface EventsResponse {
   ok: boolean;
   events: IngestedSecurityEvent[];
@@ -89,6 +101,8 @@ interface EventsResponse {
   storage: SecurityEventStorageMode;
   policy: EventPolicy;
   auth: EventAuthSummary;
+  access: ProjectAccessSummary;
+  alerting: AlertingPolicy;
   workspaces: FrontGuardWorkspace[];
 }
 
@@ -159,6 +173,18 @@ const emptyAuth: EventAuthSummary = {
   adminMode: "open-demo",
 };
 
+const emptyAccess: ProjectAccessSummary = {
+  mode: "open-demo",
+  tokenScopes: [],
+};
+
+const emptyAlerting: AlertingPolicy = {
+  mode: "audit-only",
+  minSeverity: "critical",
+  webhookConfigured: false,
+  timeoutMs: 2500,
+};
+
 interface WorkspaceFilters {
   orgId: string;
   projectId: string;
@@ -190,6 +216,11 @@ function readInitialWorkspaceFilters(): WorkspaceFilters {
     projectId: params.get("projectId") ?? "",
     appId: params.get("appId") ?? "",
   };
+}
+
+function readInitialAccessToken(): string {
+  if (typeof window === "undefined") return "";
+  return sessionStorage.getItem("frontguard.accessToken") ?? "";
 }
 
 function normalizeWorkspaceFilters(filters: WorkspaceFilters): WorkspaceFilters {
@@ -229,7 +260,8 @@ function retentionLabel(policy: EventPolicy): string {
 
 async function fetchSecurityEvents(
   severityFilter: SecurityEventSeverity | "all",
-  filters: WorkspaceFilters
+  filters: WorkspaceFilters,
+  accessToken = ""
 ): Promise<EventsResponse> {
   const params = new URLSearchParams({ limit: "50" });
   if (severityFilter !== "all") params.set("severity", severityFilter);
@@ -237,8 +269,14 @@ async function fetchSecurityEvents(
   if (filters.projectId) params.set("projectId", filters.projectId);
   if (filters.appId) params.set("appId", filters.appId);
 
+  const headers = new Headers();
+  if (accessToken.trim()) {
+    headers.set("x-frontguard-access-token", accessToken.trim());
+  }
+
   const response = await fetch(`/api/security-events?${params.toString()}`, {
     cache: "no-store",
+    headers,
   });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
@@ -257,6 +295,9 @@ export default function SecurityEventsPage() {
   const [workspaces, setWorkspaces] = useState<FrontGuardWorkspace[]>([]);
   const [policy, setPolicy] = useState<EventPolicy>(emptyPolicy);
   const [auth, setAuth] = useState<EventAuthSummary>(emptyAuth);
+  const [access, setAccess] = useState<ProjectAccessSummary>(emptyAccess);
+  const [alerting, setAlerting] = useState<AlertingPolicy>(emptyAlerting);
+  const [accessToken, setAccessToken] = useState(readInitialAccessToken);
 
   async function loadEvents(
     filters = queryFilters,
@@ -266,12 +307,18 @@ export default function SecurityEventsPage() {
     setError(null);
 
     try {
-      const data = await fetchSecurityEvents(severity, normalizeWorkspaceFilters(filters));
+      const data = await fetchSecurityEvents(
+        severity,
+        normalizeWorkspaceFilters(filters),
+        accessToken
+      );
       setEvents(data.events);
       setSummary(data.summary);
       setWorkspaces(data.workspaces ?? []);
       setPolicy(data.policy ?? emptyPolicy);
       setAuth(data.auth ?? emptyAuth);
+      setAccess(data.access ?? emptyAccess);
+      setAlerting(data.alerting ?? emptyAlerting);
     } catch {
       setError("Security event stream is unavailable.");
     } finally {
@@ -283,7 +330,7 @@ export default function SecurityEventsPage() {
     let cancelled = false;
     const filters = normalizeWorkspaceFilters(queryFilters);
 
-    fetchSecurityEvents(severityFilter, filters)
+    fetchSecurityEvents(severityFilter, filters, accessToken)
       .then((data) => {
         if (cancelled) return;
         setEvents(data.events);
@@ -291,6 +338,8 @@ export default function SecurityEventsPage() {
         setWorkspaces(data.workspaces ?? []);
         setPolicy(data.policy ?? emptyPolicy);
         setAuth(data.auth ?? emptyAuth);
+        setAccess(data.access ?? emptyAccess);
+        setAlerting(data.alerting ?? emptyAlerting);
         setError(null);
       })
       .catch(() => {
@@ -303,7 +352,7 @@ export default function SecurityEventsPage() {
     return () => {
       cancelled = true;
     };
-  }, [queryFilters, severityFilter]);
+  }, [accessToken, queryFilters, severityFilter]);
 
   const highPriorityCount = summary.bySeverity.critical + summary.bySeverity.high;
 
@@ -315,6 +364,11 @@ export default function SecurityEventsPage() {
     setDraftFilters({ ...emptyWorkspaceFilters });
     setQueryFilters({ ...emptyWorkspaceFilters });
     setSeverityFilter("all");
+  }
+
+  function updateAccessToken(value: string) {
+    setAccessToken(value);
+    sessionStorage.setItem("frontguard.accessToken", value);
   }
 
   async function sendSampleEvent() {
@@ -666,6 +720,26 @@ export default function SecurityEventsPage() {
           <div className="border border-cyan-500/20 bg-cyan-950/5 rounded-xl p-4">
             <p className="text-sm font-bold text-white font-mono mb-3">Access & Retention</p>
             <div className="space-y-2 text-xs font-mono">
+              <label className="block pb-2">
+                <span className="block text-[10px] uppercase tracking-widest text-zinc-700 mb-1.5">
+                  Access Token
+                </span>
+                <input
+                  value={accessToken}
+                  onChange={(event) => updateAccessToken(event.target.value)}
+                  placeholder="optional viewer token"
+                  type="password"
+                  className="w-full rounded-lg border border-zinc-800 bg-black/20 px-3 py-2 text-xs font-mono text-zinc-300 outline-none transition-colors placeholder:text-zinc-700 focus:border-cyan-500/50"
+                />
+              </label>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-zinc-500">Reads</span>
+                <span className={access.mode === "token" ? "text-emerald-300" : "text-yellow-300"}>
+                  {access.mode === "token"
+                    ? `${access.tokenScopes.length} scoped`
+                    : "demo open"}
+                </span>
+              </div>
               <div className="flex items-center justify-between gap-3">
                 <span className="text-zinc-500">Writes</span>
                 <span className={auth.mode === "token" ? "text-emerald-300" : "text-yellow-300"}>
@@ -682,14 +756,22 @@ export default function SecurityEventsPage() {
                 <span className="text-zinc-500">Retention</span>
                 <span className="text-cyan-200">{retentionLabel(policy)}</span>
               </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-zinc-500">Alerts</span>
+                <span className={alerting.mode === "webhook" ? "text-emerald-300" : "text-yellow-300"}>
+                  {alerting.mode === "webhook"
+                    ? `${alerting.minSeverity}+ webhook`
+                    : `${alerting.minSeverity}+ audit`}
+                </span>
+              </div>
             </div>
           </div>
 
           <div className="border border-blue-500/20 bg-blue-950/5 rounded-xl p-4">
             <p className="text-sm font-bold text-white font-mono mb-2">Production Path</p>
             <p className="text-xs text-zinc-500 leading-relaxed">
-              Redis REST activates when storage credentials are present. Write tokens and retention are
-              environment-driven; next layers are project RBAC and critical alerts.
+              Redis REST activates when storage credentials are present. Project reads, write scopes,
+              retention, and critical alerts are environment-driven.
             </p>
           </div>
         </aside>

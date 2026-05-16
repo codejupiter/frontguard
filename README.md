@@ -123,12 +123,12 @@ Demonstrates raising purchase limits by editing HTML attributes, unlocking premi
 | **API** | Next.js Route Handlers |
 | **Auth** | Manual JWT simulation (no external providers) |
 | **Security** | Nonce-based CSP, request IDs, route-level rate limits |
-| **Telemetry** | Typed workspace event envelope, ingestion route, scoped write tokens, retention policy, memory/Redis REST event store |
+| **Telemetry** | Typed workspace event envelope, ingestion route, scoped write tokens, project read RBAC, alert policy, retention policy, memory/Redis REST event store |
 | **Deploy** | Vercel (zero config) |
 
 The hosted [FrontGuard Agent demo](https://frontguard-agent.vercel.app/) can submit runtime events into `/api/security-events`. The route only allows same-origin requests plus trusted demo origins; add more origins with `FRONTGUARD_EVENT_ORIGINS` when testing alternate deployments. Event storage uses the in-process demo adapter by default and switches to Redis REST when Vercel/Upstash `KV_REST_API_*` or `FRONTGUARD_REDIS_REST_*` credentials are configured.
 
-Use `.env.example` for optional CORS, Redis persistence, retention, admin token, and scoped event write-token variables.
+Use `.env.example` for optional CORS, Redis persistence, retention, scoped write tokens, project read tokens, admin tokens, and critical alert webhooks.
 
 ---
 

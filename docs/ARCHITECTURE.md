@@ -11,7 +11,7 @@ The app is not a scanner and it is not a production identity provider. It is an 
 - Shared security context and event log.
 - Nonce-based CSP in production.
 - Route-level rate limiting and request IDs.
-- Suite v2 event ingestion prototype for FrontGuard Agent findings.
+- Suite v2 event ingestion, project RBAC, and critical alerting prototype for FrontGuard Agent findings.
 - Unit tests for security utilities.
 - Playwright smoke tests for the highest-risk flows.
 
@@ -50,7 +50,7 @@ Shared UI lives under `components/`:
 - `HintBar`, `InfoPanel`, `StatusPanel`, and primitives keep module education consistent.
 - `OnboardingModal` makes the first-run experience guided without changing the module logic.
 
-The `/security-events` route is the first FrontGuard Suite v2 surface. It consumes the same event envelope described in `frontguard-agent`, calls `POST /api/security-events`, resolves org/project metadata, and presents recent findings as a tenant-scoped triage queue.
+The `/security-events` route is the first FrontGuard Suite v2 surface. It consumes the same event envelope described in `frontguard-agent`, calls `POST /api/security-events`, resolves org/project metadata, and presents recent findings as a project-scoped triage queue.
 
 ## Security Utilities
 
@@ -61,9 +61,9 @@ The `/security-events` route is the first FrontGuard Suite v2 surface. It consum
 - Role permission checks.
 - In-memory rate limiting.
 - Audit event creation and event context.
-- FrontGuard Agent event-envelope validation, sanitization, optional scoped write-token authorization, memory/Redis REST storage, retention policy, summary stats, and workspace filtering.
+- FrontGuard Agent event-envelope validation, sanitization, optional scoped write-token authorization, optional project read tokens, memory/Redis REST storage, retention policy, alert dispatch, summary stats, and workspace filtering.
 
-The tokens and rate limits are intentionally simple because the app is a playground. The event ingestion path is shaped like a SaaS boundary: CORS allowlisting, optional scoped write tokens, optional admin token for clearing streams, Redis-backed retention, and audit logging. The documentation and UI call out where a real product would add signed JWT/session cookies, project RBAC, durable audit storage, and a real identity provider.
+The tokens and rate limits are intentionally simple because the app is a playground. The event ingestion path is shaped like a SaaS boundary: CORS allowlisting, optional scoped write tokens, optional project read tokens, optional admin token for clearing streams, Redis-backed retention, critical alerting, and audit logging. The documentation and UI call out where a real product would add signed JWT/session cookies, durable audit storage, and a real identity provider.
 
 ## CSP Design
 
@@ -117,7 +117,7 @@ If FrontGuard became a real security education SaaS platform, the next backend l
 - Durable audit/event storage.
 - Redis/Upstash rate limits.
 - Per-organization modules and assignments.
-- Real CSP report ingestion and FrontGuard Agent event ingestion.
+- Real CSP report ingestion, FrontGuard Agent event ingestion, and alert routing.
 - Admin dashboard for vulnerable-pattern analytics and runtime event triage.
 
 The suite roadmap expands this into event ingestion, triage dashboards, organization workflows, and a clean contract between the browser package and the SaaS backend.

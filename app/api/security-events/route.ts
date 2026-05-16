@@ -9,6 +9,15 @@ import {
   readEventWriteToken,
 } from "@/lib/security/eventWriteAuth";
 import {
+  authorizeProjectAccess,
+  getProjectAccessSummary,
+  readProjectAccessToken,
+} from "@/lib/security/eventProjectAccess";
+import {
+  dispatchSecurityEventAlert,
+  getSecurityEventAlertPolicy,
+} from "@/lib/security/eventAlerts";
+import {
   clearSecurityEvents,
   FRONTGUARD_WORKSPACES,
   getHighestSeverity,
@@ -91,7 +100,7 @@ function responseHeaders(req: NextRequest, init?: ResponseInit): Headers {
     headers.set("access-control-allow-methods", "GET,POST,DELETE,OPTIONS");
     headers.set(
       "access-control-allow-headers",
-      "authorization, content-type, x-frontguard-admin-token, x-frontguard-event-token"
+      "authorization, content-type, x-frontguard-access-token, x-frontguard-admin-token, x-frontguard-event-token"
     );
     headers.set("access-control-max-age", "600");
   }
@@ -140,16 +149,37 @@ function readIdentifier(req: NextRequest, key: string): string | undefined {
 
 export async function GET(req: NextRequest) {
   const storageMode = getSecurityEventStorageMode();
+  const requestedFilters = {
+    orgId: readIdentifier(req, "orgId"),
+    projectId: readIdentifier(req, "projectId"),
+    appId: readIdentifier(req, "appId"),
+    severity: readSeverity(req),
+    type: readType(req),
+    limit: readLimit(req),
+  };
+  const access = authorizeProjectAccess(
+    requestedFilters,
+    readProjectAccessToken(req.headers),
+    "viewer"
+  );
+
+  if (!access.ok) {
+    const ctx = buildEventContext(req);
+    writeAuditEvent({
+      type: "rbac.access_denied",
+      ...ctx,
+      severity: "medium",
+      detail: {
+        endpoint: "/api/security-events",
+        reason: access.reason,
+      },
+    });
+
+    return json(req, { ok: false, error: access.reason }, { status: access.status });
+  }
 
   try {
-    const events = await getSecurityEvents({
-      orgId: readIdentifier(req, "orgId"),
-      projectId: readIdentifier(req, "projectId"),
-      appId: readIdentifier(req, "appId"),
-      severity: readSeverity(req),
-      type: readType(req),
-      limit: readLimit(req),
-    });
+    const events = await getSecurityEvents(access.filters);
 
     return json(req, {
       ok: true,
@@ -158,6 +188,8 @@ export async function GET(req: NextRequest) {
       storage: storageMode,
       policy: getSecurityEventRetentionPolicy(),
       auth: getEventWriteAuthSummary(),
+      access: getProjectAccessSummary(),
+      alerting: getSecurityEventAlertPolicy(),
       workspaces: FRONTGUARD_WORKSPACES,
     });
   } catch {
@@ -269,6 +301,30 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  const alert = await dispatchSecurityEventAlert(ingested);
+  if (alert.triggered) {
+    const alertAuditType =
+      alert.delivered || alert.mode === "audit-only"
+        ? "security.alert_triggered"
+        : "security.alert_failed";
+
+    writeAuditEvent({
+      type: alertAuditType,
+      ...ctx,
+      severity: alert.severity,
+      detail: {
+        endpoint: "/api/security-events",
+        appId: validated.data.appId,
+        environment: validated.data.environment,
+        count: ingested.length,
+        mode: alert.mode,
+        delivered: alert.delivered,
+        status: alert.status,
+        error: alert.error,
+      },
+    });
+  }
+
   let summaryEvents = ingested;
   try {
     summaryEvents = await getSecurityEvents({ limit: 200 });
@@ -286,6 +342,9 @@ export async function POST(req: NextRequest) {
       storage: storageMode,
       policy: getSecurityEventRetentionPolicy(),
       auth: getEventWriteAuthSummary(),
+      access: getProjectAccessSummary(),
+      alerting: getSecurityEventAlertPolicy(),
+      alert,
       workspaces: FRONTGUARD_WORKSPACES,
     },
     { status: 202 }
@@ -342,6 +401,8 @@ export async function DELETE(req: NextRequest) {
     storage: storageMode,
     policy: getSecurityEventRetentionPolicy(),
     auth: getEventWriteAuthSummary(),
+    access: getProjectAccessSummary(),
+    alerting: getSecurityEventAlertPolicy(),
     workspaces: FRONTGUARD_WORKSPACES,
   });
 }

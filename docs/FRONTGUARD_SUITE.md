@@ -19,8 +19,8 @@ That makes the suite useful as a portfolio product because it demonstrates produ
 |---|---|---|---|
 | [FrontGuard Playground](https://github.com/codejupiter/frontguard) | Live app | Frontend teams, junior engineers, security-minded product teams | Teach XSS, auth storage, API exposure, RBAC, and client-side bypasses with safe interactive demos. |
 | [FrontGuard Agent](https://github.com/codejupiter/frontguard-agent) | Package-ready demo | SaaS teams, platform teams, security-conscious frontend teams | Detect script injection, iframe injection, and suspicious DOM mutations inside real browser sessions. |
-| Event ingestion API | Prototype | Security/product engineering teams | Accept agent events, validate payloads, rate-limit writes, and store normalized security signals. |
-| Security operations dashboard | Prototype | Engineering managers, app owners, security reviewers | Triage events by severity, application, session, source, browser, and release. |
+| Event ingestion API | Prototype | Security/product engineering teams | Accept agent events, validate payloads, authorize writes, alert on critical findings, and store normalized security signals. |
+| Security operations dashboard | Prototype | Engineering managers, app owners, security reviewers | Triage events by severity, application, session, project scope, source, browser, and release. |
 
 ## Current Live Surfaces
 
@@ -78,6 +78,10 @@ That boundary keeps the browser package privacy-aware and transport-agnostic whi
 
 `POST /api/security-events` remains open to trusted demo origins until `FRONTGUARD_EVENT_WRITE_TOKENS` is configured. When configured, callers must send `Authorization: Bearer <token>` or `x-frontguard-event-token`. Token scopes use `*=token`, `org=token`, `org/project=token`, or `org/project/app=token`. `DELETE /api/security-events` can be protected separately with `FRONTGUARD_ADMIN_TOKEN`.
 
+`GET /api/security-events` remains open for portfolio demos until `FRONTGUARD_PROJECT_ACCESS_TOKENS` is configured. Read tokens use `scope:role=token`, where roles are `viewer`, `triager`, or `admin` and scopes are `*`, `org`, `org/project`, or `org/project/app`. Successful scoped reads are narrowed server-side before events are returned.
+
+Critical alerting is environment-driven. Without `FRONTGUARD_ALERT_WEBHOOK_URL`, matching events produce audit-only alert records. With a webhook URL, FrontGuard posts a compact alert payload for events at or above `FRONTGUARD_ALERT_MIN_SEVERITY` and treats delivery failures as audit events instead of failing ingestion.
+
 For local or alternate hosted demos, set `FRONTGUARD_EVENT_ORIGINS` to a comma-separated list of trusted origins that may POST event envelopes.
 
 ## Roadmap
@@ -86,8 +90,8 @@ For local or alternate hosted demos, set `FRONTGUARD_EVENT_ORIGINS` to a comma-s
 |---|---|---|
 | 1. Education | Playground with attack and secure modes | Next.js App Router, security headers, route handlers, responsive product UI, Playwright smoke tests. |
 | 2. Runtime package | Agent with typed API and small bundle | TypeScript library design, MutationObserver lifecycle, package exports, compatibility docs, dry-run packaging. |
-| 3. Ingestion | Event API prototype, then durable storage | Authenticated API design, schema validation, rate limits, queueing, database modeling. |
-| 4. Dashboard | Security triage workspace prototype | Data visualization, filtering, severity workflows, realtime updates, accessibility. |
+| 3. Ingestion | Event API prototype with durable storage | Authenticated API design, schema validation, scoped writes, retention, alert dispatch, database modeling. |
+| 4. Dashboard | Security triage workspace prototype | Project-scoped reads, data visualization, filtering, severity workflows, realtime updates, accessibility. |
 | 5. Organization layer | Teams, projects, policies, reports | RBAC, audit logs, billing-ready product boundaries, compliance-friendly documentation. |
 
 ## Differentiation
